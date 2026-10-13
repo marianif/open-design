@@ -89,6 +89,7 @@ test('opencode args pass model-supported variants without changing the default a
   )?.reasoningOptions, undefined);
   assert.deepEqual(opencode.helpArgs, ['run', '--help']);
   assert.deepEqual(opencode.capabilityFlags?.['--dangerously-skip-permissions'], 'skipPermissions');
+  assert.deepEqual(opencode.capabilityFlags?.['--auto'], 'autoApprovePermissions');
   assert.equal(baseArgs.includes('-'), false);
   assert.equal(baseArgs.includes(prompt), false);
   assert.deepEqual(baseArgs, [
@@ -252,6 +253,42 @@ test('opencode pins its workspace to the project cwd', () => {
 test('opencode omits --dir for a run with no project directory', () => {
   const args = opencode.buildArgs('design a dashboard', [], [], {}, {});
   assert.equal(args.includes('--dir'), false);
+});
+
+test('opencode v2 omits --dir and folds the variant into -m', () => {
+  // v2 (help advertises --auto): the process cwd is the project, `--dir`
+  // and `--variant` were removed, and the variant rides inside the model
+  // id as `provider/model#variant`.
+  agentCapabilities.set('opencode', { autoApprovePermissions: true });
+  try {
+    assert.deepEqual(
+      opencode.buildArgs('design a dashboard', [], [], {}, { cwd: '/projects/p1' }),
+      ['run', '--format', 'json', '--auto'],
+    );
+    assert.deepEqual(
+      opencode.buildArgs('design a dashboard', [], [], {
+        model: 'anthropic/claude-sonnet-4-5',
+        reasoning: 'high',
+      }, { cwd: '/projects/p1' }),
+      ['run', '--format', 'json', '--auto', '-m', 'anthropic/claude-sonnet-4-5#high'],
+    );
+    assert.deepEqual(
+      opencode.buildArgs('design a dashboard', [], [], {
+        model: 'custom/withvariant#low',
+        reasoning: 'high',
+      }, {}),
+      ['run', '--format', 'json', '--auto', '-m', 'custom/withvariant#low'],
+    );
+    assert.deepEqual(
+      opencode.buildArgs('design a dashboard', [], [], {
+        model: 'anthropic/claude-sonnet-4-5',
+        reasoning: 'default',
+      }, {}),
+      ['run', '--format', 'json', '--auto', '-m', 'anthropic/claude-sonnet-4-5'],
+    );
+  } finally {
+    agentCapabilities.delete('opencode');
+  }
 });
 
 // Copilot reads the prompt from stdin when `-p` is omitted entirely

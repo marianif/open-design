@@ -46,9 +46,11 @@ Every done task carries evidence (commit / test counts / PR / command output).
 - [ ] T-205 (Optional internal) manual skills copy into `~/.config/crush/skills/` — D2 scope.
 
 ## M3a — OpenCode V2 validation (FR-3.1)
-- [ ] T-301 Probe v2.0.26: `run --format json`, `-s`, `-m`, `--variant`, permission flag probe,
-      `models --verbose`, `OPENCODE_CONFIG_CONTENT` merge.
-- [ ] T-302 Patch the def where V2 moved; keep V1-compatible path intact.
+- [x] T-301 Probe matrix run against v2.0.26 and recorded → `track-3a-opencode-v2-findings.md`
+      (flag/format/cmd → OK | changed | gone; the local v1→v2 shim is documented there).
+- [x] T-302 Def patched to be v2-native with the v1 path retained: `--auto` capability + preference,
+      `--dir` skipped on v2, variant folded into `-m model#variant`. Commit `cb6c2aa85f`;
+      affected tests 81/81; daemon typecheck green.
 - [ ] T-303 (Optional) V1→V2 upgrade nudge diagnostic (FR-3.3).
 
 ## M3b — OpenCode V2 native transport (FR-3.2, flagship)

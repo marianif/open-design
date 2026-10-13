@@ -50,9 +50,11 @@ curl -s http://127.0.0.1:<daemon-port>/api/agents | (look for the agent)   # por
 
 ## E. M3a — OpenCode V2 validation
 
-- [ ] v2.0.26 probe matrix run and recorded (flag/format/cmd → works | changed | gone)
-- [ ] Any required def patches landed with tests
-- [ ] Existing OpenCode runs still work end-to-end on V2
+- [x] v2.0.26 probe matrix run and recorded → `track-3a-opencode-v2-findings.md`
+- [x] Def patches landed with tests (`cb6c2aa85f`: `--auto`, no `--dir` on v2, `#variant` folding;
+      81/81 affected tests, typecheck green)
+- [ ] Existing OpenCode runs still work end-to-end on V2 — argv is now v2-native and
+      unit-verified; live check blocked on the account (402 insufficient funds) or another provider
 
 ## F. M3b — OpenCode V2 native transport
 
