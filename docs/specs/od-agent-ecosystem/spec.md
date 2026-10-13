@@ -133,6 +133,7 @@ Everything else (skills bridge, CI lint, packaged builds) is a refinement of the
 | D5 | Archived Go binary fully out of scope | no PRs possible, no migration path; Crush is the lineage | 2026-10-13 |
 | D6 | Internal-first; upstream PR deferred until proven | user call; fork merge + local notes instead | 2026-10-13 |
 | D7 | OpenCode def becomes v2-native, capability-gated on `--auto`; v1 path retained | v2 removed `--dir`/`--variant`/skip-permissions; probes in `track-3a-opencode-v2-findings.md` | 2026-10-13 |
+| D8 | Keep `opencode` (CLI) + `opencode-acp` as separate defs; ACP is the recommended v2 path; unification (env-switch) deferred until Track 4 dogfooding informs it | user-verified live ACP run; two-defs precedent (`byok-opencode`); avoids engine transport-switching work | 2026-10-13 |
 
 ## 9. Open questions
 - **OQ-1** Which Crush provider/key should internal runs use? (blocks AS-1)

@@ -60,13 +60,20 @@ Every done task carries evidence (commit / test counts / PR / command output).
 - [x] T-352 Phase 1: `opencode-acp` def + registry + metadata + tests (commit `cdb04ddf74`);
       drift guards registered (auth allowlist + `opencode_acp` analytics id); detection
       live-verified (80 models, `opencode/*` first). Docs: `0607472ecc`.
-- [ ] T-353 Validate ACP live on a free model: model picker from `session/new`, cancel, follow-up
-      resume (`loadSession`), headless permission posture.
-- [ ] T-354 Phase 2: default-transport decision for v2 builds (env switch vs two defs).
+- [~] T-353 Validate ACP live: model picker + streamed run **user-verified in the UI**
+      (2026-10-13, `opencode/cat-jam-free`); cancel + follow-up resume + headless permission
+      posture still to check.
+- [x] T-354 Phase 2 default-transport decision — **D8: keep two defs for now** (ACP recommended
+      for v2; unification deferred until Track 4 dogfooding informs it).
 - [ ] T-355 Phase 3 (optional): HTTP `serve` transport if ACP gaps appear.
 
 ## M4 — `plugin-open-design` for OpenCode V2 (FR-4)
-- [ ] T-401 Fetch V2 plugin docs; scaffold package; wire local install for dogfood.
+- [~] T-401 V2 plugin docs fetched and mapped: tools via `ctx.tool.transform` (JSON-schema input +
+      `execute(input, ctx)` with `ctx.signal`), prompt-admission + `context` system hooks for
+      DESIGN.md/context injection, `tool.hook("execute.after")` for design-lint, plus
+      commands/skills/mcp transforms; package format `@opencode/plugin` with `plugins[]` config.
+      Next: scaffold package + decide auth path (**OQ-4**: local daemon API is open on 127.0.0.1
+      in dev; tool tokens are minted for OD-spawned children — resolve before T-402 write tools).
 - [ ] T-402 Typed tools: projects list, file read, artifact save/lint (daemon REST; auth **OQ-4**).
 - [ ] T-403 DESIGN.md + tokens.css auto-context.
 - [ ] T-404 Lint hook on UI-file edits (adherence idea from `handoff-od`, made live).

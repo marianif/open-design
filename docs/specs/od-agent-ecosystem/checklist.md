@@ -61,12 +61,12 @@ curl -s http://127.0.0.1:<daemon-port>/api/agents | (look for the agent)   # por
 - [x] Design note recorded → `track-3b-opencode-transport-design.md` (ACP-first recommendation)
 - [x] `opencode-acp` def lands with tests (`detectAcpModels` from `session/new` configOptions;
       detection live-verified: 80 models, `opencode/*` free models first)
-- [ ] Live ACP run on a free model (`opencode/cat-jam-free`): model picker populated, events
-      streamed, cancel works mid-turn
+- [x] Live ACP run on a free model — **user-verified in the UI (2026-10-13)**
+- [ ] Cancel works mid-turn in the UI
 - [ ] Follow-up turn resumes the same ACP session (`loadSession`)
 - [ ] Headless permission posture verified (ACP requests auto-answered or graceful)
 - [ ] CLI `opencode` def still functions (v1-era / shim-less builds)
-- [ ] Default-transport decision recorded (Phase 2: env switch vs two defs)
+- [x] Default-transport decision recorded — D8: two defs retained for now (see `spec.md` §8)
 
 ## G. M4 — OpenCode plugin
 
