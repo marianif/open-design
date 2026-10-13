@@ -17,6 +17,7 @@ describe('agentIdToTracking', () => {
   it('keeps mapping known CLI agents and falls back to other for unknowns', () => {
     expect(agentIdToTracking('claude')).toBe('claude_code');
     expect(agentIdToTracking('opencode')).toBe('opencode');
+    expect(agentIdToTracking('opencode-acp')).toBe('opencode_acp');
     expect(agentIdToTracking('crush')).toBe('crush');
     expect(agentIdToTracking('totally-unknown-agent')).toBe('other');
     expect(agentIdToTracking(null)).toBe('other');

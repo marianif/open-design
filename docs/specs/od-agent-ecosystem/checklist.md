@@ -59,7 +59,8 @@ curl -s http://127.0.0.1:<daemon-port>/api/agents | (look for the agent)   # por
 ## F. M3b — OpenCode V2 native transport
 
 - [x] Design note recorded → `track-3b-opencode-transport-design.md` (ACP-first recommendation)
-- [ ] `opencode-acp` def lands with tests (`detectAcpModels` from `session/new` configOptions)
+- [x] `opencode-acp` def lands with tests (`detectAcpModels` from `session/new` configOptions;
+      detection live-verified: 80 models, `opencode/*` free models first)
 - [ ] Live ACP run on a free model (`opencode/cat-jam-free`): model picker populated, events
       streamed, cancel works mid-turn
 - [ ] Follow-up turn resumes the same ACP session (`loadSession`)

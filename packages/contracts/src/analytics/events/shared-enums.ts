@@ -198,6 +198,7 @@ export type TrackingCliProviderId =
   | 'gemini_cli'
   | 'opencode'
   | 'byok_opencode'
+  | 'opencode_acp'
   | 'hermes'
   | 'kimi_cli'
   | 'cursor_agent'

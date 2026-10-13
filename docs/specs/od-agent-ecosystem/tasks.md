@@ -57,7 +57,9 @@ Every done task carries evidence (commit / test counts / PR / command output).
 - [x] T-351 Design note — `track-3b-opencode-transport-design.md`. Evidence-driven pick:
       **ACP-first** (Phase 1: `opencode-acp` def reusing `acp-json-rpc`), CLI def retained as
       fallback, HTTP `serve` deferred (experimental surface).
-- [ ] T-352 Phase 1: add `opencode-acp` def (in progress this branch), registry + metadata + tests.
+- [x] T-352 Phase 1: `opencode-acp` def + registry + metadata + tests (commit `cdb04ddf74`);
+      drift guards registered (auth allowlist + `opencode_acp` analytics id); detection
+      live-verified (80 models, `opencode/*` first). Docs: `0607472ecc`.
 - [ ] T-353 Validate ACP live on a free model: model picker from `session/new`, cancel, follow-up
       resume (`loadSession`), headless permission posture.
 - [ ] T-354 Phase 2: default-transport decision for v2 builds (env switch vs two defs).

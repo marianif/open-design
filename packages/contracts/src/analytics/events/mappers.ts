@@ -193,6 +193,8 @@ export function agentIdToTracking(agentId: string | null | undefined): TrackingC
       return 'gemini_cli';
     case 'opencode':
       return 'opencode';
+    case 'opencode-acp':
+      return 'opencode_acp';
     case 'hermes':
       return 'hermes';
     case 'kimi':
