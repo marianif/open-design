@@ -26,7 +26,7 @@ curl -s http://127.0.0.1:<daemon-port>/api/agents | (look for the agent)   # por
 - [x] Merged: local `main` ff→`23de9270ac`; fork PR #1 merged → `75b0c93271`
 - [x] Notes file present: `CRUSH-INTEGRATION.md` (git-excluded) · spec set in plan dir
 
-## C. M1.5 — First internal live run (blocking)
+## C. M1.5 — Crush live run (OPTIONAL — parked 2026-10-13; the pipeline runs on OpenCode)
 
 - [ ] Crush provider configured (OQ-1 resolved; provider: ______ )
 - [ ] `pnpm tools-dev start web` → status shows daemon + web

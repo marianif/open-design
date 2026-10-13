@@ -24,13 +24,14 @@ Every done task carries evidence (commit / test counts / PR / command output).
 - [x] T-107 Local merge: `main` ff → `23de9270ac`; fork sync + PR #1 merged → `75b0c93271`.
 - [x] T-108 Local notes file `CRUSH-INTEGRATION.md` (repo root, git-excluded) + spec set (this dir).
 
-## M1.5 — First internal live run ⏳ (blocking next step)
-- [ ] T-151 Configure a Crush provider (user action; `crush` TUI once — Hyper free tier, or a key
-      in `~/.config/crush/crushrc`). **OQ-1**
-- [ ] T-152 Dev stack up (`pnpm tools-dev start web`) → pick **Crush** in a project.
-- [ ] T-153 Run a small design brief; verify AS-1: streamed text, files land, no approval hang,
-      run completes. Capture the run id / screenshot in OD.
-- [ ] T-154 Record outcome here + in work_state; fix anything the live run surfaces.
+## M1.5 — Crush live run (OPTIONAL / PARKED 2026-10-13)
+> Not required for the core pipeline: kick-off + implementation already run on **OpenCode**
+> (CLI + ACP defs, live-verified, free models) + the plugin. Crush is the lineage bonus —
+> un-park the moment a provider is set (`crush login openai|grok|copilot|hyper`, or a BYO key).
+- [ ] T-151 (parked) Configure a Crush provider — Hyper device flow expired; account choice undecided. **OQ-1**
+- [ ] T-152 (parked) Dev stack → pick **Crush** in a project.
+- [ ] T-153 (parked) Small brief; verify AS-1 (stream, files, no approval hang).
+- [ ] T-154 (parked) Record outcome here + in work_state.
 
 ## M2 — Crush ↔ OD tool plane (Track 2 / FR-2)
 - [x] T-201 Decided `kind: 'json'` (**OQ-2 closed**): entry shape pinned to the published schema
