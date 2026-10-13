@@ -75,15 +75,15 @@ Every done task carries evidence (commit / test counts / PR / command output).
       commands/skills/mcp transforms; package format `@opencode/plugin` with `plugins[]` config.
       Next: scaffold package + decide auth path (**OQ-4**: local daemon API is open on 127.0.0.1
       in dev; tool tokens are minted for OD-spawned children — resolve before T-402 write tools).
-- [~] T-402 Tools live-verified: `od_project_list` / `od_active_context` / `od_file_read` called by the
-      model in-session and returned live daemon JSON (plugin repo commit `98eabf1`; scratch project
-      `plugin-od-test2`). Artifact save/lint tools next. **OQ-4 append**: local dev daemon is open on
-      127.0.0.1; install recipe = `.opencode/plugins/<name>/index.ts` + `opencode reload` (config
-      `plugins[]` absolute paths failed on 2.0.26).
-- [~] T-403 DESIGN.md auto-context live-verified (model answered the fixture brand color with no file
-      read). tokens.css + active-OD-project design system enrichment next.
-- [ ] T-404 Lint hook on UI-file edits (adherence idea from `handoff-od`, made live).
-- [ ] T-405 Dogfood on v2.0.26: AS-4 passes in a real repo session.
+- [x] T-402 Tools live-verified end-to-end (bare names): `project_list` / `active_context` / `file_read` /
+      `file_write` (save-back — file proven via API in the "Hello" project, then cleaned up) /
+      `artifact_lint` (findings + agentMessage round-trip). **OQ-4 resolved for dev**: local daemon open
+      on 127.0.0.1; token auth deferred for non-dev daemons.
+- [~] T-403 DESIGN.md auto-context live-verified. tokens.css + active-OD-project enrichment next.
+- [x] T-404 HTML design-lint hook live-verified: fires on `write` of `*.html`, lints via
+      `/api/artifacts/lint`, attaches findings to result metadata/content. Sloppy fixture → **P0 detected**.
+      `edit`-tool coverage + non-HTML linting deferred.
+- [ ] T-405 Dogfood in a real repo session (AS-4 end-to-end in a live project).
 
 ## M5 — Live round trip (Track 5 / FR-5)
 - [ ] T-501 "Implement in my repo" flow end-to-end (OpenCode/Crush cwd = repo, tokens wired).

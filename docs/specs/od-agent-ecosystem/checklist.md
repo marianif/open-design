@@ -70,15 +70,15 @@ curl -s http://127.0.0.1:<daemon-port>/api/agents | (look for the agent)   # por
 
 ## G. M4 — OpenCode plugin
 
-- [x] Plugin loads in v2.0.26 — verified via the directory recipe (`.opencode/plugins/<name>/index.ts`
-      + `opencode reload`); config `plugins[]` absolute paths did not load (recorded in the plugin README)
-- [~] Tools: `od_project_list` / `od_active_context` / `od_file_read` **live-verified end-to-end**
-      (model called the tool in-session; output = live daemon JSON); artifact save/lint + lint hook next
-- [~] DESIGN.md auto-context **live-verified** (fixture brand color answered with no file read);
-      tokens.css + active-OD-project enrichment next
-- [ ] Lint hook fires on a UI-file edit — AS-4
-- [~] Daemon discovery: plugin options → `OD_DAEMON_URL` → `~/.config/opencode/open-design.json` →
-      default; token auth for non-dev daemons still open (OQ-4)
+- [x] Plugin loads in v2.0.26 — directory recipe (`.opencode/plugins/<name>/index.ts` + `opencode reload`)
+- [x] Tools live-verified end-to-end (bare names): `project_list`, `active_context`, `file_read`,
+      `file_write` (save-back proven via API into the "Hello" project), `artifact_lint`
+- [x] DESIGN.md auto-context live-verified (fixture brand color answered with no file read)
+- [x] HTML design-lint hook fires on writes — sloppy fixture flagged **P0** and attached to the tool
+      result; `edit`-tool coverage deferred
+- [~] Daemon discovery: options → `OD_DAEMON_URL` → `~/.config/opencode/open-design.json` → default;
+      token auth for non-dev daemons deferred
+- [ ] Dogfood in a real repo session (AS-4 end-to-end) — next
 
 ## H. M5 — Live round trip
 

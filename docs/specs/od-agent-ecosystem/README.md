@@ -13,8 +13,9 @@ context *from* OD (MCP/plugin plane). Internal-first; an upstream PR only if it 
 | `track-3a-opencode-v2-findings.md` | Validation evidence — OpenCode v2.0.26 matrix, shim note, open items |
 | `track-3b-opencode-transport-design.md` | Transport design — ACP-first plan, evidence, phases, risks |
 
-**Live status (2026-10-13):** Tracks 0–3b ✅ — Crush adapter, `od mcp install crush`, v2-native
-OpenCode CLI def, OpenCode ACP transport; all merged/pushed. Track 4 core ✅ dogfooded — plugin
-tools + DESIGN.md context live on v2.0.26. Next: Track 4 remainder (artifact tools, lint hook) →
-Track 5 round trip, **engine = OpenCode (free models)**. M1.5 Crush live run: **parked, optional**
-(needs a provider account decision, not required for the pipeline).
+**Live status (2026-10-13):** Tracks 0–3b ✅ (Crush adapter, `od mcp install crush`, v2-native CLI
+def, OpenCode ACP transport; merged/pushed). Track 4 ✅ functionally complete — plugin tools
+(`project_list`, `active_context`, `file_read`, `file_write`, `artifact_lint`), DESIGN.md context,
+and an HTML design-lint hook (P0 detection) all live-verified on v2.0.26; install recipe + daemon
+discovery recorded. Next: dogfood the plugin in a real repo session (AS-4) → Track 5 round trip,
+**engine = OpenCode (free models)**. M1.5 Crush live run: **parked, optional**.
