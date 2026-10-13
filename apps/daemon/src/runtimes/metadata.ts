@@ -95,6 +95,10 @@ const AGENT_INSTALL_LINKS: Record<
     installUrl: 'https://atomcode.atomgit.com/docs/en/quickstart.html',
     docsUrl: 'https://atomcode.atomgit.com/docs/en/index.html',
   },
+  crush: {
+    installUrl: 'https://github.com/charmbracelet/crush#installation',
+    docsUrl: 'https://github.com/charmbracelet/crush',
+  },
 };
 
 function sanitizeHttpsUrl(value: string | undefined): string | undefined {
