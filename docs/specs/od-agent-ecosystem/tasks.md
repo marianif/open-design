@@ -33,10 +33,16 @@ Every done task carries evidence (commit / test counts / PR / command output).
 - [ ] T-154 Record outcome here + in work_state; fix anything the live run surfaces.
 
 ## M2 — Crush ↔ OD tool plane (Track 2 / FR-2)
-- [ ] T-201 Decide `kind: 'json'` vs `kind: 'cli'` for crush in `mcp-agent-install.ts` (**OQ-2**).
-- [ ] T-202 Implement `crush` target: slug + plan fn + executor wiring; `--print` & `--uninstall`.
-- [ ] T-203 Test (mirror `mcp-install-cli.test.ts`); gates green.
-- [ ] T-204 Internal verify: Crush session reads live OD project; uninstall cleanly removes.
+- [x] T-201 Decided `kind: 'json'` (**OQ-2 closed**): entry shape pinned to the published schema
+      `charm.land/crush.json` → `$defs.MCPConfig` (`additionalProperties:false`); path
+      `~/.config/crush/crush.json`, keyPath `['mcp']`.
+- [x] T-202 Implemented the `crush` target: slug + planner case; `--print` / `--uninstall` via the
+      shared executor. Commit `ef4a7b7081`.
+- [x] T-203 Tests: planner plan + merge/remove preservation + CLI dry-run — 28/28 on the two affected
+      files; daemon `typecheck` green.
+- [~] T-204 Live install verified on this machine (file written; Crush loads it — only the expected
+      provider error remains; uninstall preview clean; idempotent md5). Full AS-2 session read is
+      blocked on the Crush provider (shares the M1.5 block).
 - [ ] T-205 (Optional internal) manual skills copy into `~/.config/crush/skills/` — D2 scope.
 
 ## M3a — OpenCode V2 validation (FR-3.1)

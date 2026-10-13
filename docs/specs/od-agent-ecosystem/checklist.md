@@ -40,12 +40,13 @@ curl -s http://127.0.0.1:<daemon-port>/api/agents | (look for the agent)   # por
 
 ## D. M2 — `od mcp install crush` (Track 2)
 
-- [ ] `od mcp install crush --print` shows the exact merge plan
-- [ ] Real install merges Crush config without clobbering existing keys
+- [x] `od mcp install crush --print` shows the exact merge plan (live daemon launch spec)
+- [x] Real install merges Crush config without clobbering existing keys (fresh file created correctly)
+- [x] `od mcp install crush --uninstall` removes exactly what it added (clean preview; planner tests)
+- [x] Idempotent: running twice changes nothing (identical md5)
+- [x] Tests + gates green (28/28 affected files; daemon typecheck)
 - [ ] `crush` session can `od project list` / `od files read` against a live OD project — AS-2
-- [ ] `od mcp install crush --uninstall` removes exactly what it added
-- [ ] Idempotent: running twice changes nothing
-- [ ] Tests + gates green
+      (blocked on the Crush provider, same as M1.5)
 
 ## E. M3a — OpenCode V2 validation
 
