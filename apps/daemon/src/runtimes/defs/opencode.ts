@@ -3,6 +3,7 @@ import {
   OPENCODE_PERMISSION_CAPABILITY,
   appendOpenCodePermissionBypass,
   appendOpenCodeWorkspaceDir,
+  isOpenCodeV2,
 } from '../opencode-permissions.js';
 import { getRememberedLiveModels } from '../models.js';
 import type { RuntimeAgentDef, RuntimeModelOption } from '../types.js';
@@ -142,7 +143,7 @@ export const opencodeAgentDef = {
         'json',
       ];
       appendOpenCodePermissionBypass(args, 'opencode');
-      appendOpenCodeWorkspaceDir(args, runtimeContext.cwd);
+      appendOpenCodeWorkspaceDir(args, runtimeContext.cwd, 'opencode');
       // Capture-style resume: OpenCode mints its own session id (reported on
       // the stream as `sessionID`, e.g. `ses_...`). On a follow-up turn the
       // daemon continues that session with `-s <id>` instead of re-sending the
@@ -157,10 +158,19 @@ export const opencodeAgentDef = {
       if (resumeSessionId) {
         args.push('-s', resumeSessionId);
       }
+      // v2 folds the variant into the model id (`provider/model#variant`)
+      // and has no `--variant` flag; v1 selects it with the separate flag,
+      // gated on live `models --verbose` metadata (v2 ships neither the
+      // flag nor the metadata).
+      const isV2 = isOpenCodeV2('opencode');
       if (options.model && options.model !== 'default') {
-        args.push('-m', options.model);
+        const model =
+          isV2 && options.reasoning && options.reasoning !== 'default' && !options.model.includes('#')
+            ? `${options.model}#${options.reasoning}`
+            : options.model;
+        args.push('-m', model);
       }
-      if (supportsOpenCodeVariant(options.model, options.reasoning)) {
+      if (!isV2 && supportsOpenCodeVariant(options.model, options.reasoning)) {
         args.push('--variant', options.reasoning);
       }
       return args;
