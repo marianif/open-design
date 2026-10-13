@@ -47,6 +47,7 @@ export const AGENT_SLUGS = [
   'kiro',
   'trae',
   'opencode',
+  'crush',
   'claude-desktop',
 ] as const;
 
@@ -263,6 +264,22 @@ export function planAgentInstall(
           if (Object.keys(spec.env).length > 0) e.environment = spec.env;
           return e;
         })(),
+      };
+    case 'crush':
+      // Crush reads MCP servers from the root `mcp` key of its config. The
+      // modern surface is the `crushrc` language (`mcp add …`); the legacy
+      // `crush.json` — deprecated upstream but still supported, and merged
+      // beneath crushrc — carries the same structure. The entry shape is
+      // pinned to the published schema at https://charm.land/crush.json
+      // ($defs.MCPConfig, which sets `additionalProperties: false`), so the
+      // shared stdio entry — command/args/type/env — is all it accepts.
+      return {
+        kind: 'json',
+        slug,
+        configPath: path.join(home, '.config', 'crush', 'crush.json'),
+        keyPath: ['mcp'],
+        serverKey: serverName,
+        entry: jsonEntry(spec, { type: 'stdio' }),
       };
     case 'openclaw':
       return {
