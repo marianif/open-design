@@ -58,14 +58,14 @@ curl -s http://127.0.0.1:<daemon-port>/api/agents | (look for the agent)   # por
 
 ## F. M3b — OpenCode V2 native transport
 
-- [ ] Service discovery/auth works from the daemon (no manual env when possible)
-- [ ] Structured events map to: text deltas, thinking, tool call, file write, usage, done
-- [ ] Cancel terminates mid-turn within ~1s
-- [ ] Follow-up resumes the same session (no transcript re-send)
-- [ ] Model list comes from the live API (15s `models --verbose` scrape avoided)
-- [ ] V1 fallback still functions behind a capability gate
-- [ ] `tests/runtimes/` + new transport tests green; guard/typecheck green
-- [ ] Parity demo recorded (structured tool rows + cancel) — AS-3
+- [x] Design note recorded → `track-3b-opencode-transport-design.md` (ACP-first recommendation)
+- [ ] `opencode-acp` def lands with tests (`detectAcpModels` from `session/new` configOptions)
+- [ ] Live ACP run on a free model (`opencode/cat-jam-free`): model picker populated, events
+      streamed, cancel works mid-turn
+- [ ] Follow-up turn resumes the same ACP session (`loadSession`)
+- [ ] Headless permission posture verified (ACP requests auto-answered or graceful)
+- [ ] CLI `opencode` def still functions (v1-era / shim-less builds)
+- [ ] Default-transport decision recorded (Phase 2: env switch vs two defs)
 
 ## G. M4 — OpenCode plugin
 

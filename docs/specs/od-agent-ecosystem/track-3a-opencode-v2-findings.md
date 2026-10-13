@@ -46,3 +46,16 @@ required *for OD* (it remains useful for other v1-era tools on the machine).
 - Server/API transport replaces stream scraping + CLI model discovery (and can supply variants).
 - Re-validate MCP pickup of the installed entry through a real OD→OpenCode run once the account
   has funds (or another provider is selected).
+
+## Addendum (same day, post-3a)
+
+- **Live runs unblocked without funds**: the `opencode` provider (distinct from the empty
+  `opencode-go` wallet) serves free models — `opencode run -m opencode/cat-jam-free --format json`
+  completed with `{"type":"text","text":"OK",…}`. That is the live validation path for OpenCode.
+- **V2 CLI frames parse with the existing handler**: a tool-using run emitted `step_start`,
+  `tool_use` (with `part.tool` + `part.callID`), `step_finish`, `text` — exactly the shapes
+  `json-event-stream.ts`'s opencode handler already consumes (no parser patch needed).
+- **ACP + HTTP surfaces discovered** — see `track-3b-opencode-transport-design.md`:
+  `opencode acp` handshake advertises loadSession + session list/resume/close/delete/fork +
+  images + embedded context + MCP-http; `session/new` returns the full model select;
+  `opencode serve` exposes a 118-path (self-described *experimental*) HTTP API.

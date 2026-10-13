@@ -54,12 +54,14 @@ Every done task carries evidence (commit / test counts / PR / command output).
 - [ ] T-303 (Optional) V1→V2 upgrade nudge diagnostic (FR-3.3).
 
 ## M3b — OpenCode V2 native transport (FR-3.2, flagship)
-- [ ] T-351 Design note: transport shape (`agent-protocol/opencode/`, new `streamFormat`), event
-      mapping table, permission posture, cancel/resume semantics.
-- [ ] T-352 Implement service discovery/auth (client `Service` API or HTTP + `/openapi.json`).
-- [ ] T-353 Stream mapping → OD UI events; cancel; session list/resume; model discovery via API.
-- [ ] T-354 Keep CLI JSONL fallback (capability-gated); tests + gates.
-- [ ] T-355 Internal demo: parity run vs the shim (structured tool events + cancel mid-turn).
+- [x] T-351 Design note — `track-3b-opencode-transport-design.md`. Evidence-driven pick:
+      **ACP-first** (Phase 1: `opencode-acp` def reusing `acp-json-rpc`), CLI def retained as
+      fallback, HTTP `serve` deferred (experimental surface).
+- [ ] T-352 Phase 1: add `opencode-acp` def (in progress this branch), registry + metadata + tests.
+- [ ] T-353 Validate ACP live on a free model: model picker from `session/new`, cancel, follow-up
+      resume (`loadSession`), headless permission posture.
+- [ ] T-354 Phase 2: default-transport decision for v2 builds (env switch vs two defs).
+- [ ] T-355 Phase 3 (optional): HTTP `serve` transport if ACP gaps appear.
 
 ## M4 — `plugin-open-design` for OpenCode V2 (FR-4)
 - [ ] T-401 Fetch V2 plugin docs; scaffold package; wire local install for dogfood.
