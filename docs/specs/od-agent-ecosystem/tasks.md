@@ -83,7 +83,10 @@ Every done task carries evidence (commit / test counts / PR / command output).
 - [x] T-404 HTML design-lint hook live-verified: fires on `write` of `*.html`, lints via
       `/api/artifacts/lint`, attaches findings to result metadata/content. Sloppy fixture → **P0 detected**.
       `edit`-tool coverage + non-HTML linting deferred.
-- [ ] T-405 Dogfood in a real repo session (AS-4 end-to-end in a live project).
+- [x] T-405 Real-repo dogfood ✅ — plugin installed in `~/Desktop/the-wedge/trackly-expense-tracker`
+      (git-excluded locally), a `DESIGN.md` brand contract added (derived 1:1 from `src/design/tokens.ts`),
+      and a live session answered `ACCENT=#206956` + listed `artifact_lint,file_read,file_write`.
+      AS-4 context/tools side verified (HTML lint N/A in an RN repo).
 
 ## M5 — Live round trip (Track 5 / FR-5)
 - [ ] T-501 "Implement in my repo" flow end-to-end (OpenCode/Crush cwd = repo, tokens wired).

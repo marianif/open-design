@@ -78,7 +78,8 @@ curl -s http://127.0.0.1:<daemon-port>/api/agents | (look for the agent)   # por
       result; `edit`-tool coverage deferred
 - [~] Daemon discovery: options → `OD_DAEMON_URL` → `~/.config/opencode/open-design.json` → default;
       token auth for non-dev daemons deferred
-- [ ] Dogfood in a real repo session (AS-4 end-to-end) — next
+- [x] Dogfood in a real repo session — `trackly-expense-tracker`: plugin loaded, `DESIGN.md` context
+      answered the accent token (`#206956`), tools registered (`file_read` / `file_write` / `artifact_lint`)
 
 ## H. M5 — Live round trip
 

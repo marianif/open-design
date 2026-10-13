@@ -17,5 +17,6 @@ context *from* OD (MCP/plugin plane). Internal-first; an upstream PR only if it 
 def, OpenCode ACP transport; merged/pushed). Track 4 ✅ functionally complete — plugin tools
 (`project_list`, `active_context`, `file_read`, `file_write`, `artifact_lint`), DESIGN.md context,
 and an HTML design-lint hook (P0 detection) all live-verified on v2.0.26; install recipe + daemon
-discovery recorded. Next: dogfood the plugin in a real repo session (AS-4) → Track 5 round trip,
-**engine = OpenCode (free models)**. M1.5 Crush live run: **parked, optional**.
+discovery recorded. Next: **Track 5 round trip** — live in `trackly-expense-tracker` (whose
+`tokens.ts` is itself "ported 1:1 from the OpenDesign prototype", closing the loop that was
+already being done by hand). M1.5 Crush live run: **parked, optional**.
