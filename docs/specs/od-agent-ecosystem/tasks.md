@@ -1,0 +1,75 @@
+# Tasks — status board
+
+Legend: `[x]` done · `[~]` doing · `[ ]` todo · `[-]` dropped
+Every done task carries evidence (commit / test counts / PR / command output).
+
+## M0 — Recon & decisions ✅
+- [x] T-001 Machine & repo recon — OD clone, fork/upstream remotes, app, PR #8642 state. `2026-10-13`
+- [x] T-002 Crush v0.98.1 behavior recon — stdin prompt (`MaybePrependStdin`), `--yolo` root-only,
+      non-interactive auto-approve (`Permissions.AutoApproveSession`), `session list --json`,
+      `crush models` = 1785 ids, empty `~/.config/crush`.
+- [x] T-003 Decisions D1–D6 recorded in `spec.md` §8.
+- [-] T-004 Legacy archived-binary compat — dropped by D5.
+
+## M1 — Crush runtime adapter ✅ (Track 0 + Track 1)
+- [x] T-101 `defs/crush.ts` — `run -q` + `-m`, stdin prompt, plain stream, 5 model hints,
+      no resume/MCP injection. Commit `23de9270ac`.
+- [x] T-102 Registry + metadata entries.
+- [x] T-103 Drift guards: `OWN_AGENT_COMMAND_NAMES` += `crush`; `TrackingCliProviderId` + mapper
+      + contracts test assertion.
+- [x] T-104 Tests: `tests/runtimes/crush.test.ts` (7) + full suite green —
+      **85/85 files, 1548 passed, 2 skipped**.
+- [x] T-105 Gates: daemon `typecheck` ✅ · `pnpm guard` ✅ (x2) · contracts 738/738 ✅.
+- [x] T-106 Live detection: `/api/agents` → `crush` available v0.98.1, 28 defs ✅.
+- [x] T-107 Local merge: `main` ff → `23de9270ac`; fork sync + PR #1 merged → `75b0c93271`.
+- [x] T-108 Local notes file `CRUSH-INTEGRATION.md` (repo root, git-excluded) + spec set (this dir).
+
+## M1.5 — First internal live run ⏳ (blocking next step)
+- [ ] T-151 Configure a Crush provider (user action; `crush` TUI once — Hyper free tier, or a key
+      in `~/.config/crush/crushrc`). **OQ-1**
+- [ ] T-152 Dev stack up (`pnpm tools-dev start web`) → pick **Crush** in a project.
+- [ ] T-153 Run a small design brief; verify AS-1: streamed text, files land, no approval hang,
+      run completes. Capture the run id / screenshot in OD.
+- [ ] T-154 Record outcome here + in work_state; fix anything the live run surfaces.
+
+## M2 — Crush ↔ OD tool plane (Track 2 / FR-2)
+- [ ] T-201 Decide `kind: 'json'` vs `kind: 'cli'` for crush in `mcp-agent-install.ts` (**OQ-2**).
+- [ ] T-202 Implement `crush` target: slug + plan fn + executor wiring; `--print` & `--uninstall`.
+- [ ] T-203 Test (mirror `mcp-install-cli.test.ts`); gates green.
+- [ ] T-204 Internal verify: Crush session reads live OD project; uninstall cleanly removes.
+- [ ] T-205 (Optional internal) manual skills copy into `~/.config/crush/skills/` — D2 scope.
+
+## M3a — OpenCode V2 validation (FR-3.1)
+- [ ] T-301 Probe v2.0.26: `run --format json`, `-s`, `-m`, `--variant`, permission flag probe,
+      `models --verbose`, `OPENCODE_CONFIG_CONTENT` merge.
+- [ ] T-302 Patch the def where V2 moved; keep V1-compatible path intact.
+- [ ] T-303 (Optional) V1→V2 upgrade nudge diagnostic (FR-3.3).
+
+## M3b — OpenCode V2 native transport (FR-3.2, flagship)
+- [ ] T-351 Design note: transport shape (`agent-protocol/opencode/`, new `streamFormat`), event
+      mapping table, permission posture, cancel/resume semantics.
+- [ ] T-352 Implement service discovery/auth (client `Service` API or HTTP + `/openapi.json`).
+- [ ] T-353 Stream mapping → OD UI events; cancel; session list/resume; model discovery via API.
+- [ ] T-354 Keep CLI JSONL fallback (capability-gated); tests + gates.
+- [ ] T-355 Internal demo: parity run vs the shim (structured tool events + cancel mid-turn).
+
+## M4 — `plugin-open-design` for OpenCode V2 (FR-4)
+- [ ] T-401 Fetch V2 plugin docs; scaffold package; wire local install for dogfood.
+- [ ] T-402 Typed tools: projects list, file read, artifact save/lint (daemon REST; auth **OQ-4**).
+- [ ] T-403 DESIGN.md + tokens.css auto-context.
+- [ ] T-404 Lint hook on UI-file edits (adherence idea from `handoff-od`, made live).
+- [ ] T-405 Dogfood on v2.0.26: AS-4 passes in a real repo session.
+
+## M5 — Live round trip (Track 5 / FR-5)
+- [ ] T-501 "Implement in my repo" flow end-to-end (OpenCode/Crush cwd = repo, tokens wired).
+- [ ] T-502 Watcher + sidecar screenshot of dev server → preview beside mock.
+- [ ] T-503 Save-back + lint into the OD project; memory accumulates.
+- [ ] T-504 Demo recording (the showcase artifact).
+
+## Backlog (post-proven, decision-gated)
+- [ ] T-901 Upstream PR to `nexu-io/open-design` from `feat/crush-runtime` (D6 gate; recipe in
+      `CRUSH-INTEGRATION.md`).
+- [ ] T-902 `od skills export --target crush|opencode`.
+- [ ] T-903 Crush `serve` structured transport (tool-granular events).
+- [ ] T-904 Design-lint CI (`opencode run` + OD MCP in GitHub Actions).
+- [ ] T-905 Packaged desktop build with the adapter in the daily app (**OQ-3**).
