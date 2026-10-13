@@ -77,6 +77,7 @@ import {
 } from './agents.js';
 import { agentCliEnvForAgent, readAppConfig } from './app-config.js';
 import { createJsonEventStreamHandler } from './runtimes/json-event-stream.js';
+import { pinOpenCodeWorkspaceEnv } from './runtimes/opencode-permissions.js';
 
 const SYSTEM_PROMPT = `You are a memory extractor for a personal AI design assistant.
 
@@ -1042,6 +1043,10 @@ async function callLocalCli(provider, system, user, options) {
     ),
     launch,
   );
+  // OpenCode v2 resolves its workspace from `PWD` rather than the spawn cwd
+  // (Node never updates `PWD`), so the extractor's neutral directory must be
+  // pinned or a v2 binary chdirs back to the daemon's launch directory.
+  pinOpenCodeWorkspaceEnv(env, cwd, def.id);
   const invocation = createCommandInvocation({
     command: launch.launchPath,
     args,

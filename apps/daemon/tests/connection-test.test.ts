@@ -47,6 +47,7 @@ import { startServer } from '../src/server.js';
 import { getRememberedLiveModels, rememberLiveModels } from '../src/runtimes/models.js';
 import { amrModelLoadingCache } from '../src/runtimes/amr-model-cache.js';
 import { buildAmrModelCacheKey } from '../src/runtimes/amr-model-probe.js';
+import { agentCapabilities } from '../src/runtimes/capabilities.js';
 
 type FetchInput = Parameters<typeof fetch>[0];
 type FetchInit = Parameters<typeof fetch>[1];
@@ -3903,6 +3904,12 @@ process.exit(1);
     const markerDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'od-opencode-argv-'));
     const argvFile = path.join(markerDir, 'argv.json');
     const stdinFile = path.join(markerDir, 'stdin.txt');
+    // Pin the v1 generation explicitly: the daemon's boot-time detection can
+    // warm `opencode` capabilities from the machine's real CLI (v2 on
+    // developer machines), which would change the argv generation under test.
+    // An empty map is the v1 build whose help never advertised the skip flag.
+    const previousCaps = agentCapabilities.get('opencode');
+    agentCapabilities.set('opencode', {});
     try {
       await withFakeOpenCode(
         `
@@ -3965,6 +3972,84 @@ process.stdin.on('end', () => {
         },
       );
     } finally {
+      if (previousCaps === undefined) agentCapabilities.delete('opencode');
+      else agentCapabilities.set('opencode', previousCaps);
+      await fsp.rm(markerDir, { recursive: true, force: true });
+    }
+  });
+
+  it('launches OpenCode v2 connection tests without --dir/--pure and pins PWD to the probe cwd', async () => {
+    const markerDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'od-opencode-v2-argv-'));
+    const argvFile = path.join(markerDir, 'argv.json');
+    const cwdFile = path.join(markerDir, 'cwd.json');
+    const previousCaps = agentCapabilities.get('opencode');
+    agentCapabilities.set('opencode', { autoApprovePermissions: true });
+    try {
+      await withFakeOpenCode(
+        `
+const fs = require('node:fs');
+const args = process.argv.slice(2);
+if (args[0] === 'models') {
+  console.log('github-copilot/gpt-4o');
+  process.exit(0);
+}
+fs.writeFileSync(${JSON.stringify(argvFile)}, JSON.stringify(args));
+// Resolve the two paths while they still exist: the connection-test flow
+// removes its temp cwd before the HTTP response reaches the assertions.
+fs.writeFileSync(${JSON.stringify(cwdFile)}, JSON.stringify({
+  pwdReal: process.env.PWD ? fs.realpathSync(process.env.PWD) : null,
+  cwdReal: fs.realpathSync(process.cwd()),
+}));
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', () => {});
+process.stdin.on('end', () => {
+  console.log(JSON.stringify({ type: 'text', part: { text: 'ok' } }));
+});
+`,
+        async () => {
+          const res = await realFetch(`${baseUrl}/api/test/connection`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              mode: 'agent',
+              agentId: 'opencode',
+              model: 'github-copilot/gpt-4o',
+            }),
+          });
+          expect(res.status).toBe(200);
+          await expect(res.json()).resolves.toMatchObject({
+            ok: true,
+            kind: 'success',
+            agentName: 'OpenCode',
+            model: 'github-copilot/gpt-4o',
+            sample: 'ok',
+          });
+
+          // v2 dropped `--dir` and `--pure`; the argv is `--auto` plus the
+          // model, and the pinned `PWD` must match the probe's own cwd so
+          // the run cannot adopt the daemon's launch directory.
+          const argv = JSON.parse(await fsp.readFile(argvFile, 'utf8')) as string[];
+          expect(argv.slice(0, 3)).toEqual(['run', '--format', 'json']);
+          expect(argv.includes('--dir')).toBe(false);
+          expect(argv.includes('--pure')).toBe(false);
+          expect(argv.slice(3)).toEqual([
+            '--auto',
+            '-m',
+            'github-copilot/gpt-4o',
+            '--title',
+            'Connection test',
+          ]);
+
+          const marks = JSON.parse(await fsp.readFile(cwdFile, 'utf8')) as {
+            pwdReal: string | null;
+            cwdReal: string;
+          };
+          expect(marks.pwdReal).toBe(marks.cwdReal);
+        },
+      );
+    } finally {
+      if (previousCaps === undefined) agentCapabilities.delete('opencode');
+      else agentCapabilities.set('opencode', previousCaps);
       await fsp.rm(markerDir, { recursive: true, force: true });
     }
   });

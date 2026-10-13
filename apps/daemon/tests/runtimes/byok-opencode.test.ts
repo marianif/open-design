@@ -23,12 +23,35 @@ describe('byok-opencode runtime config', () => {
       'json',
     ]);
 
+    // Unwarmed capabilities keep the v1 fallback: `--dir` is appended
+    // unconditionally so a v1 build without it fails loudly instead of
+    // silently adopting the repository root.
+    expect(byokOpenCodeAgentDef.buildArgs('', [], [], {}, { cwd: '/projects/p1' })).toEqual([
+      'run',
+      '--format',
+      'json',
+      '--dir',
+      '/projects/p1',
+    ]);
+
     agentCapabilities.set('byok-opencode', { skipPermissions: true });
     try {
       expect(byokOpenCodeAgentDef.buildArgs('', [], [], { model: 'gpt-5.5' })).toEqual([
         'run',
         '--format',
         'json',
+        '--dangerously-skip-permissions',
+        '-m',
+        'open-design-byok/gpt-5.5',
+      ]);
+      expect(byokOpenCodeAgentDef.buildArgs(
+        '', [], [], { model: 'gpt-5.5' }, { cwd: '/projects/p1' },
+      )).toEqual([
+        'run',
+        '--format',
+        'json',
+        '--dir',
+        '/projects/p1',
         '--dangerously-skip-permissions',
         '-m',
         'open-design-byok/gpt-5.5',
@@ -40,6 +63,17 @@ describe('byok-opencode runtime config', () => {
     agentCapabilities.set('byok-opencode', { autoApprovePermissions: true });
     try {
       expect(byokOpenCodeAgentDef.buildArgs('', [], [], { model: 'gpt-5.5' })).toEqual([
+        'run',
+        '--format',
+        'json',
+        '--auto',
+        '-m',
+        'open-design-byok/gpt-5.5',
+      ]);
+      // v2 dropped `--dir`; its spawn sites pin `PWD` instead.
+      expect(byokOpenCodeAgentDef.buildArgs(
+        '', [], [], { model: 'gpt-5.5' }, { cwd: '/projects/p1' },
+      )).toEqual([
         'run',
         '--format',
         'json',
