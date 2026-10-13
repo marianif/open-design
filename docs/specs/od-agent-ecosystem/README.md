@@ -11,6 +11,6 @@ context *from* OD (MCP/plugin plane). Internal-first; an upstream PR only if it 
 | `tasks.md` | Ordered work with statuses, dependencies, evidence |
 | `checklist.md` | Acceptance & verification checklists (the checkmarks) |
 
-**Live status (2026-10-13):** recon ✅ → Track 0 ✅ → Track 1 ✅ (commit `23de9270ac`,
-merged via fork PR #1 → `75b0c93271`, dev stack running with Crush detected) → next:
-**internal live run** (blocked only on a Crush provider) → Track 2.
+**Live status (2026-10-13):** recon ✅ → Track 0 ✅ → Track 1 ✅ (`23de9270ac`, fork PR #1 →
+`75b0c93271`) → Track 2 ✅ (`ef4a7b7081`, live install verified) → next: **internal live run**
+(M1.5, blocked only on a Crush provider) → Track 3.

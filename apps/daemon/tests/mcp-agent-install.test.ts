@@ -28,7 +28,8 @@ describe('agent slug guard', () => {
   it('accepts every documented slug and rejects others', () => {
     for (const s of AGENT_SLUGS) expect(isAgentSlug(s)).toBe(true);
     expect(isAgentSlug('not-an-agent')).toBe(false);
-    expect(AGENT_SLUGS).toHaveLength(17);
+    expect(AGENT_SLUGS).toHaveLength(18);
+    expect(isAgentSlug('crush')).toBe(true);
     expect(isAgentSlug('kiro')).toBe(true);
     expect(isAgentSlug('reasonix')).toBe(true);
     expect(isAgentSlug('raven')).toBe(true);
@@ -98,6 +99,38 @@ describe('JSON-config agents', () => {
       enabled: true,
       environment: SPEC.env,
     });
+  });
+
+  it('crush merges a stdio entry under mcp in ~/.config/crush/crush.json', () => {
+    const plan = planAgentInstall('crush', SPEC, ctx());
+    if (plan.kind !== 'json') throw new Error('expected json');
+    expect(plan.configPath).toBe('/home/u/.config/crush/crush.json');
+    expect(plan.keyPath).toEqual(['mcp']);
+    expect(plan.serverKey).toBe('open-design');
+    expect(plan.entry).toEqual({
+      command: SPEC.command,
+      args: SPEC.args,
+      type: 'stdio',
+      env: SPEC.env,
+    });
+  });
+
+  it('crush install and removal preserve existing config and sibling servers', () => {
+    const plan = planAgentInstall('crush', SPEC, ctx());
+    if (plan.kind !== 'json') throw new Error('expected json');
+    const existing = JSON.stringify({
+      options: { debug: true },
+      mcp: { existing: { type: 'stdio', command: 'existing-command' } },
+    });
+
+    const installed = JSON.parse(applyJsonInstall(existing, plan));
+    expect(installed.options).toEqual({ debug: true });
+    expect(installed.mcp.existing).toEqual({ type: 'stdio', command: 'existing-command' });
+    expect(installed.mcp['open-design']).toEqual(plan.entry);
+
+    const removed = removeJsonInstall(JSON.stringify(installed), plan);
+    expect(removed).not.toBeNull();
+    expect(JSON.parse(removed ?? '{}')).toEqual(JSON.parse(existing));
   });
 
   it('openclaw nests under mcp.servers', () => {

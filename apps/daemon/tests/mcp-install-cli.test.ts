@@ -80,4 +80,52 @@ describe('od mcp install CLI identity probe', () => {
       });
     }
   });
+
+  it('plans the crush JSON merge for a daemon-resolved launch spec', async () => {
+    const launchSpec = {
+      command: '/opt/open-design/runtime',
+      args: ['/opt/open-design/daemon-cli.mjs', 'mcp'],
+      env: { OD_DATA_DIR: '/tmp/open-design-data' },
+    };
+    const server = createServer((_req, res) => {
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify(launchSpec));
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === 'string') throw new Error('missing test server address');
+      const result = await runCli([
+        'mcp',
+        'install',
+        'crush',
+        '--print',
+        '--json',
+        '--daemon-url',
+        `http://127.0.0.1:${address.port}`,
+      ]);
+
+      expect(result.code).toBe(0);
+      expect(result.stderr).toBe('');
+      const parsed = JSON.parse(result.stdout);
+      expect(parsed).toMatchObject({
+        ok: true,
+        agent: 'crush',
+        kind: 'json',
+        launchSpec,
+      });
+      expect(parsed.configPath.endsWith('/.config/crush/crush.json')).toBe(true);
+      const preview = JSON.parse(parsed.preview);
+      expect(preview.mcp['open-design']).toEqual({
+        command: launchSpec.command,
+        args: launchSpec.args,
+        type: 'stdio',
+        env: launchSpec.env,
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      });
+    }
+  });
 });
