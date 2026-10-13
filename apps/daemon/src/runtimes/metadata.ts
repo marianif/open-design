@@ -31,6 +31,10 @@ const AGENT_INSTALL_LINKS: Record<
     installUrl: 'https://opencode.ai/docs',
     docsUrl: 'https://github.com/sst/opencode',
   },
+  'opencode-acp': {
+    installUrl: 'https://opencode.ai/docs',
+    docsUrl: 'https://github.com/sst/opencode',
+  },
   hermes: {
     installUrl: 'https://github.com/nexu-io/open-design/blob/main/docs/agent-adapters.md',
     docsUrl: 'https://hermes-agent.nousresearch.com/docs/',
