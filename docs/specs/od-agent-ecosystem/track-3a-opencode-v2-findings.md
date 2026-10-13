@@ -59,3 +59,38 @@ required *for OD* (it remains useful for other v1-era tools on the machine).
   `opencode acp` handshake advertises loadSession + session list/resume/close/delete/fork +
   images + embedded context + MCP-http; `session/new` returns the full model select;
   `opencode serve` exposes a 118-path (self-described *experimental*) HTTP API.
+
+## Addendum II — v2 workspace pinning (PWD), same day
+
+Row 7's verdict was incomplete. v2 dropped `--dir`, but it did **not** fall back to the
+spawn cwd: a non-interactive run resolves its workspace as
+`options.root ?? process.env.PWD ?? process.cwd()` and `chdir`s there **before any model
+call**. Node's `spawn({ cwd })` never updates `PWD`, so every daemon-spawned v2 run adopted
+the daemon's launch directory — the same silent wrong-workspace / `no_artifact` class
+`--dir` used to prevent on v1.
+
+Verified live on **v2.0.26** (not just the reviewer's v2.0.18) with the real binary:
+
+```bash
+$ cd /tmp/od-pwd-probe/cwd
+$ env PWD=/tmp/od-pwd-probe/does-not-exist ~/.opencode/bin/opencode run --format json ...
+{"type":"error","error":{"message":"Failed to change directory to /tmp/od-pwd-probe/does-not-exist"}}
+```
+
+Fix (commit `36777b9f52`, branch `feat/opencode-v2-native-followups`):
+
+- `pinOpenCodeWorkspaceEnv(env, cwd, agentId)` — sets `env.PWD` only when the `--auto`
+  probe detected v2 and `cwd` is non-empty; v1 keeps `--dir`; unwarmed stays untouched.
+- Wired at the three spawn sites: chat spawn (`server.ts`), connection test
+  (`connectionTest.ts`), memory extractor (`memory-llm.ts`). `byok-opencode` now shares
+  `appendOpenCodeWorkspaceDir` instead of its own unconditional `--dir` block.
+- Side surfaces verified on v2.0.26 while here: `--pure` is gone from `run` (connection
+  tests now skip it on v2; `--title` still exists); child evidence reads
+  `opencode session export <id> --sanitize` (`session export` confirmed, no `--pure`).
+- Evidence: 90 test files / 1569 passed (runtimes + memory/session + connection routes).
+
+Upstream context (2026-10-13): #8313, #8523, #8612 and #8699 report this regression; PRs
+#8479 and #8592 are open with `CHANGES_REQUESTED`, and #8479's blocker is exactly this PWD
+pin (reviewer reproduction on v2.0.18). Variant metadata remains the one open surface
+(v2 has no `models --verbose`; `~/.cache/opencode/models.json` carries variants, but it is
+an internal cache, not a CLI contract).
