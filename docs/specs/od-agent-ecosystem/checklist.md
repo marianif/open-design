@@ -83,9 +83,10 @@ curl -s http://127.0.0.1:<daemon-port>/api/agents | (look for the agent)   # por
 
 ## H. M5 — Live round trip
 
-- [ ] "Implement in my repo" produces real components with design tokens wired
+- [x] "Implement in my repo" produces real components with design tokens wired — verified:
+      OD mock → `file_read` → `pro-cheer-preview.tsx` in a trackly worktree, `tsc` green
 - [ ] OD preview shows the running app (sidecar screenshot) beside the mock
-- [ ] Artifact save-back + lint appear in the project conversation
+- [~] Artifact save-back + lint into the OD project (`file_write` proven; not yet in-project conversation)
 - [ ] Demo recorded; positioned against `handoff-od` batch flow
 
 ## I. Upstream readiness (only when D6 flips)

@@ -89,9 +89,12 @@ Every done task carries evidence (commit / test counts / PR / command output).
       AS-4 context/tools side verified (HTML lint N/A in an RN repo).
 
 ## M5 — Live round trip (Track 5 / FR-5)
-- [ ] T-501 "Implement in my repo" flow end-to-end (OpenCode/Crush cwd = repo, tokens wired).
+- [x] T-501 "Implement in my repo" leg verified — OD mock (`Trackly · Pro Cheer`) read via `file_read`
+      by a session in a trackly worktree → `src/app/pro-cheer-preview.tsx` created with the repo's UI kit +
+      Calm Ledger tokens; `tsc --noEmit` green. Isolated worktree (`trackly-demo`), working tree untouched.
 - [ ] T-502 Watcher + sidecar screenshot of dev server → preview beside mock.
-- [ ] T-503 Save-back + lint into the OD project; memory accumulates.
+- [~] T-503 Save-back into OD: `file_write` path proven earlier (Hello project); wire results into this
+      project's conversation next.
 - [ ] T-504 Demo recording (the showcase artifact).
 
 ## Backlog (post-proven, decision-gated)
