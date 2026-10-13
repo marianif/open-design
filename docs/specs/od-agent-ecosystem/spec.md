@@ -132,6 +132,7 @@ Everything else (skills bridge, CI lint, packaged builds) is a refinement of the
 | D4 | Dogfood on this machine's OpenCode v2.0.26 | fastest feedback loop | 2026-10-13 |
 | D5 | Archived Go binary fully out of scope | no PRs possible, no migration path; Crush is the lineage | 2026-10-13 |
 | D6 | Internal-first; upstream PR deferred until proven | user call; fork merge + local notes instead | 2026-10-13 |
+| D7 | OpenCode def becomes v2-native, capability-gated on `--auto`; v1 path retained | v2 removed `--dir`/`--variant`/skip-permissions; probes in `track-3a-opencode-v2-findings.md` | 2026-10-13 |
 
 ## 9. Open questions
 - **OQ-1** Which Crush provider/key should internal runs use? (blocks AS-1)
