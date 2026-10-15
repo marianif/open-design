@@ -369,21 +369,26 @@ export async function collectOpenCodeChildRuntimeFacts(input: {
 }
 
 /**
- * Read one child session through `opencode export <id> --sanitize`, the only
- * OpenCode surface that emits a child transcript together with the `parentID`
- * the two-sided verification needs, and with transcript and file bytes already
- * redacted by the CLI itself.
+ * Read one child session through the sanitized export, the only OpenCode
+ * surface that emits a child transcript together with the `parentID` the
+ * two-sided verification needs, and with transcript and file bytes already
+ * redacted by the CLI itself (`--sanitize` on both generations).
  *
- * `--pure` keeps a user-installed OpenCode plugin from executing inside the
- * evidence path, and `execAgentFile` supplies a neutral working directory so
- * the bun-based CLI cannot drop a lockfile into the user's project (see
- * `invocation.ts`). The env must be the one the Run was spawned with: it
- * carries the `XDG_DATA_HOME` / `HOME` that decide which session store the
- * spawned CLI actually wrote to.
+ * v1 reads `opencode export <id> --sanitize --pure`; `--pure` keeps a
+ * user-installed OpenCode plugin from executing inside the evidence path.
+ * v2 renamed the command to `opencode session export` and dropped `--pure`
+ * (verified on v2.0.26), so v2 loaders run without the isolation flag.
+ * `execAgentFile` supplies a neutral working directory so the bun-based CLI
+ * cannot drop a lockfile into the user's project (see `invocation.ts`). The
+ * env must be the one the Run was spawned with: it carries the
+ * `XDG_DATA_HOME` / `HOME` that decide which session store the spawned CLI
+ * actually wrote to.
  */
 export function createOpenCodeSanitizedExportLoader(input: {
   launchPath: string;
   env: NodeJS.ProcessEnv;
+  /** CLI generation: v2 renamed `export` to `session export` and dropped `--pure`. */
+  adapterGeneration?: 'v1' | 'v2';
   timeoutMs?: number;
   maxBytes?: number;
 }): (childSessionId: string) => Promise<unknown> {
@@ -391,9 +396,12 @@ export function createOpenCodeSanitizedExportLoader(input: {
     if (!OPENCODE_CHILD_SESSION_ID.test(childSessionId)) {
       throw new TypeError(`Unsupported OpenCode child session id: ${childSessionId}`);
     }
+    const args = input.adapterGeneration === 'v2'
+      ? ['session', 'export', childSessionId, '--sanitize']
+      : ['export', childSessionId, '--sanitize', '--pure'];
     const { stdout } = await execAgentFile(
       input.launchPath,
-      ['export', childSessionId, '--sanitize', '--pure'],
+      args,
       {
         env: input.env,
         timeout: input.timeoutMs ?? OPENCODE_CHILD_EXPORT_TIMEOUT_MS,

@@ -836,6 +836,34 @@ describe('native OpenCode child evidence', () => {
     })).resolves.toEqual([]);
   });
 
+  it('loads a child through session export on v2, where --pure does not exist', async () => {
+    const data = fixture();
+    execAgentFileMock.mockResolvedValue({
+      stdout: JSON.stringify(data.sanitizedChildExport),
+      stderr: 'Exporting session: ses_child_synthetic',
+    });
+    const load = createOpenCodeSanitizedExportLoader({
+      launchPath: '/opt/open-design/opencode',
+      env: { XDG_DATA_HOME: '/run/od/share' },
+      adapterGeneration: 'v2',
+    });
+
+    await expect(load('ses_child_synthetic')).resolves.toMatchObject({
+      info: { id: 'ses_child_synthetic', parentID: 'ses_root_synthetic' },
+    });
+    // v2 renamed the command to `session export` and dropped the v1-only
+    // plugin-isolation flag; the sanitize contract is otherwise unchanged.
+    expect(execAgentFileMock).toHaveBeenCalledWith(
+      '/opt/open-design/opencode',
+      ['session', 'export', 'ses_child_synthetic', '--sanitize'],
+      expect.objectContaining({
+        env: { XDG_DATA_HOME: '/run/od/share' },
+        timeout: expect.any(Number),
+        maxBuffer: expect.any(Number),
+      }),
+    );
+  });
+
   it('labels the fixture contract-only so it cannot become production evidence', () => {
     expect(fixture().fixtureKind).toBe('contract_only');
   });

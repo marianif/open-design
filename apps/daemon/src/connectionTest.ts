@@ -41,6 +41,7 @@ import { createClaudeStreamHandler } from './runtimes/claude-stream.js';
 import { diagnoseClaudeCliFailure } from './claude-diagnostics.js';
 import { createCopilotStreamHandler } from './copilot-stream.js';
 import { createJsonEventStreamHandler } from './runtimes/json-event-stream.js';
+import { isOpenCodeV2, pinOpenCodeWorkspaceEnv } from './runtimes/opencode-permissions.js';
 import { agentStdinPromptPayload } from './runtimes/chat-run-lifecycle.js';
 import { agentCliEnvForAgent, validateAgentCliEnv } from './app-config.js';
 import {
@@ -2608,9 +2609,14 @@ async function testAgentConnectionInternal(
       );
       // Connection tests should validate the adapter's core CLI path, not
       // fail on unrelated user-installed OpenCode plugins. `opencode run
-      // --pure` keeps the smoke test isolated while regular chat runs retain
-      // the user's full plugin environment.
-      if ((input.agentId === 'opencode' || input.agentId === 'mimo') && !args.includes('--pure')) {
+      // --pure` keeps the smoke test isolated on v1 while regular chat runs
+      // retain the user's full plugin environment; v2 dropped the flag, so
+      // it is only sent when the capability probe has not detected v2.
+      if (
+        (input.agentId === 'opencode' || input.agentId === 'mimo')
+        && !(input.agentId === 'opencode' && isOpenCodeV2('opencode'))
+        && !args.includes('--pure')
+      ) {
         args.push('--pure');
       }
       if ((input.agentId === 'opencode' || input.agentId === 'mimo') && !args.includes('--title')) {
@@ -2661,6 +2667,7 @@ async function testAgentConnectionInternal(
       ...baseEnv,
       ...(mmdRouteLaunchEnv || {}),
     }, executableResolution);
+    pinOpenCodeWorkspaceEnv(env, tempDir, input.agentId);
     model = await resolveConnectionTestModelForAgent(
       def,
       model,

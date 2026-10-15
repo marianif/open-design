@@ -515,6 +515,7 @@ import { renderDesignSystemPreview } from './design-systems/preview.js';
 import { renderDesignSystemShowcase } from './design-systems/showcase.js';
 import { createChatRunService } from './runtimes/runs.js';
 import { reapLeftoverAgentProcesses, spawnAgentProcess } from './runtimes/agent-process.js';
+import { isOpenCodeV2, pinOpenCodeWorkspaceEnv } from './runtimes/opencode-permissions.js';
 import {
   createAmrTerminalReportDeliveryService,
   createAmrTerminalReportFinalizer,
@@ -14499,6 +14500,10 @@ export async function startServer({
           ? { OD_TASK_INPUT_DIR: odNextTaskInputSnapshot.projectionDir }
           : {}),
       }, agentLaunch);
+      // OpenCode v2 resolves its workspace from `PWD` before the spawn cwd
+      // (Node's spawn({ cwd }) never updates it), so pin the resolved
+      // project directory for v2 runs; v1 keeps its `--dir` flag untouched.
+      pinOpenCodeWorkspaceEnv(env, effectiveCwd, def.id);
       if (def.id === 'opencode' || def.id === 'byok-opencode') {
         try {
           const versions = await ensureDetectedRuntimeVersions('opencode', configuredAgentEnv);
@@ -16222,6 +16227,7 @@ export async function startServer({
               loadSanitizedExport: createOpenCodeSanitizedExportLoader({
                 launchPath,
                 env: spawnedAgentEnv,
+                adapterGeneration: isOpenCodeV2('opencode') ? 'v2' : 'v1',
               }),
             });
             for (const fact of facts) {
