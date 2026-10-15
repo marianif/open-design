@@ -32,6 +32,7 @@ import { useDeckPreviewScale } from '../lib/use-deck-preview-scale';
 import { isMacPlatform } from '../utils/platform';
 import {
   deleteProjectFile,
+  fetchProjectArtifactGroups,
   fetchProjectFileText,
   fetchProjectFolders,
   fetchPluginExampleHtml,
@@ -43,6 +44,7 @@ import {
   deleteDesignSystemDraft,
   deleteProjectFolder,
   renameProjectFile,
+  saveProjectArtifactGroups,
   startDesignSystemTokenContractRebuildJob,
   updateDesignSystemDraft,
   type UploadProjectFilesResult,
@@ -104,6 +106,7 @@ import {
   type ProjectMetadata,
   type ProjectFile,
   type ProjectFolder,
+  type ProjectArtifactGroup,
 } from '../types';
 import {
   resolveLocalizedText,
@@ -497,6 +500,7 @@ const SKETCH_AUTOSAVE_DELAY_MS = 800;
 // Stable empty folder list so the render-phase project-switch reset is
 // idempotent (passing a fresh `[]` each render would re-trigger the reset).
 const EMPTY_PROJECT_FOLDERS: ProjectFolder[] = [];
+const EMPTY_PROJECT_ARTIFACT_GROUPS: ProjectArtifactGroup[] = [];
 type ProjectPageKind =
   | 'slides'
   | 'prototype'
@@ -1483,6 +1487,9 @@ export function FileWorkspace({
   const sketchPreloadInFlightRef = useRef<Map<string, Promise<boolean>>>(new Map());
   const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
   const [projectFolders, setProjectFolders] = useState<ProjectFolder[]>(EMPTY_PROJECT_FOLDERS);
+  const [projectArtifactGroups, setProjectArtifactGroups] = useState<ProjectArtifactGroup[]>(
+    EMPTY_PROJECT_ARTIFACT_GROUPS,
+  );
   // Reset the folder list during render — NOT in an effect — when the project
   // changes. DesignFilesPanel is keyed by `projectId`, so an effect-based reset
   // would let the new panel mount once with the previous project's folders and
@@ -1490,11 +1497,13 @@ export function FileWorkspace({
   // fix removes). Adjusting state during render discards this render before the
   // child commits, so the new panel never sees stale folders. Mirrors the
   // designFilesNav ref reset above. The stable empty constant keeps this
-  // idempotent (no re-entrant render loop).
+  // idempotent (no re-entrant render loop). The artifact groups follow the
+  // same contract.
   const projectFoldersProjectIdRef = useRef(projectId);
   if (projectFoldersProjectIdRef.current !== projectId) {
     projectFoldersProjectIdRef.current = projectId;
     setProjectFolders(EMPTY_PROJECT_FOLDERS);
+    setProjectArtifactGroups(EMPTY_PROJECT_ARTIFACT_GROUPS);
   }
   const [browserTabs, setBrowserTabs] = useState<BrowserWorkspaceTab[]>(
     () => browserTabsFromState(tabsState.browserTabs),
@@ -1784,12 +1793,36 @@ export function FileWorkspace({
     return next;
   }, [projectId, workspaceContext]);
 
+  const saveProjectArtifactGroupsForPanel = useCallback(
+    async (next: ProjectArtifactGroup[]): Promise<boolean> => {
+      const saved = await saveProjectArtifactGroups(projectId, next, workspaceContext);
+      if (!saved) return false;
+      setProjectArtifactGroups(saved);
+      return true;
+    },
+    [projectId, workspaceContext],
+  );
+
   useEffect(() => {
     let cancelled = false;
     // The synchronous clear happens during render (see projectFoldersProjectIdRef
     // above); here we only fetch the new project's folders.
     void fetchProjectFolders(projectId, workspaceContext).then((next) => {
       if (!cancelled) setProjectFolders(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, workspaceContext]);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Virtual artifact groups ("Collections") load once per project. All
+    // subsequent updates flow back through
+    // saveProjectArtifactGroupsForPanel, whose response replaces this state
+    // with the daemon's normalized copy.
+    void fetchProjectArtifactGroups(projectId, workspaceContext).then((next) => {
+      if (!cancelled) setProjectArtifactGroups(next);
     });
     return () => {
       cancelled = true;
@@ -4386,6 +4419,8 @@ export function FileWorkspace({
             runSteps={runSteps}
             files={visibleFiles}
             folders={projectFolders}
+            groups={projectArtifactGroups}
+            onSaveGroups={saveProjectArtifactGroupsForPanel}
             liveArtifacts={liveArtifactEntries}
             onRefreshFiles={refreshFilesWithoutResult}
             onCurrentDirChange={setUploadDir}

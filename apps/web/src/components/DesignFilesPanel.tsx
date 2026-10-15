@@ -14,7 +14,13 @@ import {
 } from '../collab/workspace-identity';
 import { useProjectCollabContext } from '../collab/collab-context';
 import { buildSrcdoc } from '../runtime/srcdoc';
-import type { LiveArtifactWorkspaceEntry, ProjectFile, ProjectFileKind, ProjectFolder } from '../types';
+import type {
+  LiveArtifactWorkspaceEntry,
+  ProjectArtifactGroup,
+  ProjectFile,
+  ProjectFileKind,
+  ProjectFolder,
+} from '../types';
 import {
   createFileSystemReadError,
   FILE_SYSTEM_READ_ERROR_MESSAGE,
@@ -47,6 +53,13 @@ export interface DesignFilesNavState {
   currentDir: string;
   page: number;
   pageSize: number | 'all';
+  // Chip-bar dimension. 'type' is the historical kind tabs; 'group' shows the
+  // project's virtual artifact groups ("Collections"). Optional so existing
+  // nav-state producers stay valid.
+  chipMode?: 'type' | 'group';
+  // Active chip in group mode: null = All, 'ungrouped' = files no group
+  // claims, otherwise a group id. Ignored in type mode.
+  activeGroupId?: string | 'ungrouped' | null;
 }
 
 interface Props {
@@ -93,6 +106,15 @@ interface Props {
   // with a matching path prefix exists, so empty (user-created or imported)
   // folders would vanish from the tree.
   folders?: ProjectFolder[];
+  // Virtual artifact groups ("Collections") from
+  // `/api/projects/:id/artifact-groups`. Metadata-only: entries reference file
+  // names and are filtered against the live file list, so a stale entry never
+  // hides a file or fabricates one.
+  groups?: ProjectArtifactGroup[];
+  // Persists the full group document. Resolves true when the daemon accepted
+  // the write; false surfaces an inline retry notice. Absent on read-only
+  // mounts, which also hides the group UI entirely.
+  onSaveGroups?: (groups: ProjectArtifactGroup[]) => Promise<boolean>;
   liveArtifacts: LiveArtifactWorkspaceEntry[];
   onRefreshFiles: () => Promise<void> | void;
   onOpenFile: (name: string) => void;
@@ -476,6 +498,8 @@ export function DesignFilesPanel({
   runSteps,
   files,
   folders,
+  groups,
+  onSaveGroups,
   liveArtifacts,
   onOpenFile,
   onOpenLiveArtifact,
@@ -542,6 +566,21 @@ export function DesignFilesPanel({
   const [currentDir, setCurrentDir] = useState<string>(() => navState?.currentDir ?? '');
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const projectMenuRef = useRef<HTMLDivElement | null>(null);
+  // Group ("Collections") UI state. The mode + active chip ride along in
+  // DesignFilesNavState like the kind filter, so the panel reopens where the
+  // user left it; the transient editing/menu states stay local.
+  const [chipMode, setChipMode] = useState<'type' | 'group'>(
+    () => (navState?.chipMode === 'group' ? 'group' : 'type'),
+  );
+  const [activeGroupId, setActiveGroupId] = useState<string | 'ungrouped' | null>(
+    () => navState?.activeGroupId ?? null,
+  );
+  const [groupDraft, setGroupDraft] = useState<{ id: string | null; name: string } | null>(null);
+  const [groupMenu, setGroupMenu] = useState<{ id: string; top: number; left: number } | null>(null);
+  const [addToGroupMenu, setAddToGroupMenu] = useState<{ top: number; left: number } | null>(null);
+  const [groupsNotice, setGroupsNotice] = useState<ActionNotice | null>(null);
+  const [savingGroups, setSavingGroups] = useState(false);
+  const groupDraftCancelledRef = useRef(false);
 
   // Keep the parent's create-target in sync with the folder being viewed, so
   // uploads / pastes / new sketches / dropped files land in the open folder
@@ -556,8 +595,10 @@ export function DesignFilesPanel({
       currentDir,
       page: 0,
       pageSize: 30,
+      chipMode,
+      activeGroupId,
     });
-  }, [currentDir, navState?.kindFilter, onNavStateChange]);
+  }, [currentDir, navState?.kindFilter, onNavStateChange, chipMode, activeGroupId]);
 
   // Derive immediate subdirectories and files at the current directory level
   // from the flat files list. Files with names like "a/b/c.html" contribute
@@ -594,9 +635,9 @@ export function DesignFilesPanel({
 
   // Group files at the current level into semantic sections, ordered by
   // SECTION_ORDER. Files within a section sort most-recently-modified first.
-  const sections = useMemo(() => {
+  const buildSections = useCallback((list: ProjectFile[]) => {
     const grouped = new Map<FileCategory, ProjectFile[]>();
-    for (const f of filesAtCurrentDir) {
+    for (const f of list) {
       const category = fileCategory(f);
       const bucket = grouped.get(category) ?? [];
       bucket.push(f);
@@ -608,7 +649,56 @@ export function DesignFilesPanel({
     return SECTION_ORDER.filter((category) => grouped.has(category)).map(
       (category) => [category, grouped.get(category)!] as const,
     );
-  }, [filesAtCurrentDir]);
+  }, []);
+  const sections = useMemo(
+    () => buildSections(filesAtCurrentDir),
+    [buildSections, filesAtCurrentDir],
+  );
+
+  // --- Virtual groups ("Collections") -------------------------------------
+  // Grouping is a presentation dimension over the same file list: membership
+  // sets are intersected with filesAtCurrentDir every render, so nothing here
+  // can hide a real file or conjure a missing one.
+  const groupsEnabled = Boolean(onSaveGroups) && !viewerOnly;
+  const groupEntrySets = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const group of groups ?? []) map.set(group.id, new Set(group.entries));
+    return map;
+  }, [groups]);
+  const groupedNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const group of groups ?? []) {
+      for (const entry of group.entries) names.add(entry);
+    }
+    return names;
+  }, [groups]);
+  const groupFilesByChip = useMemo(() => {
+    const byChip = new Map<string, ProjectFile[]>();
+    for (const group of groups ?? []) {
+      const entries = groupEntrySets.get(group.id);
+      byChip.set(group.id, entries ? filesAtCurrentDir.filter((f) => entries.has(f.name)) : []);
+    }
+    byChip.set('ungrouped', filesAtCurrentDir.filter((f) => !groupedNames.has(f.name)));
+    return byChip;
+  }, [groups, groupEntrySets, groupedNames, filesAtCurrentDir]);
+  // The active chip must survive a group being deleted elsewhere: an id that
+  // no longer exists falls back to All rather than an empty phantom list.
+  const resolvedGroupId: string | 'ungrouped' | null =
+    activeGroupId === null
+    || activeGroupId === 'ungrouped'
+    || groupFilesByChip.has(activeGroupId)
+      ? activeGroupId
+      : null;
+  const activeGroupFiles = useMemo(
+    () => (resolvedGroupId === null
+      ? filesAtCurrentDir
+      : groupFilesByChip.get(resolvedGroupId) ?? []),
+    [resolvedGroupId, filesAtCurrentDir, groupFilesByChip],
+  );
+  const groupSections = useMemo(
+    () => buildSections(activeGroupFiles),
+    [buildSections, activeGroupFiles],
+  );
 
   // Active category tab (null = default). Declared before the reset effect
   // below that clears it on directory change.
@@ -694,7 +784,7 @@ export function DesignFilesPanel({
   // the previous behavior.
   const canLazyRenderGrids = typeof IntersectionObserver !== 'undefined';
   const [gridRenderLimit, setGridRenderLimit] = useState(GRID_RENDER_BATCH);
-  const gridScopeKey = `${currentDir}\u0000${resolvedTab ?? ''}`;
+  const gridScopeKey = `${currentDir}\u0000${resolvedTab ?? ''}\u0000${chipMode === 'group' ? resolvedGroupId ?? '' : ''}`;
   const [gridScope, setGridScope] = useState(gridScopeKey);
   if (gridScope !== gridScopeKey) {
     // Adjust-during-render reset: navigating directories or switching tabs
@@ -758,8 +848,12 @@ export function DesignFilesPanel({
   }, [files]);
 
   useEffect(() => {
-    if (!menuPos) return;
-    const close = () => setMenuPos(null);
+    if (!menuPos && !groupMenu && !addToGroupMenu) return;
+    const close = () => {
+      setMenuPos(null);
+      setGroupMenu(null);
+      setAddToGroupMenu(null);
+    };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close();
     };
@@ -769,7 +863,7 @@ export function DesignFilesPanel({
       window.removeEventListener('mousedown', close);
       window.removeEventListener('keydown', onKey);
     };
-  }, [menuPos]);
+  }, [menuPos, groupMenu, addToGroupMenu]);
 
   useEffect(() => {
     const onClipboardPaste = (event: ClipboardEvent) => {
@@ -816,6 +910,162 @@ export function DesignFilesPanel({
 
   function clearSelection() {
     setSelected(new Set());
+  }
+
+  // --- Group ("Collections") actions --------------------------------------
+
+  function newGroupId(): string {
+    const uuid = globalThis.crypto?.randomUUID?.();
+    return uuid ?? `grp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  async function persistGroups(next: ProjectArtifactGroup[]): Promise<boolean> {
+    if (!onSaveGroups) return false;
+    setSavingGroups(true);
+    try {
+      const ok = await onSaveGroups(next);
+      if (!ok) {
+        setGroupsNotice(
+          buildActionNotice('Couldn’t save groups. Your last change was not stored — try again.'),
+        );
+        return false;
+      }
+      setGroupsNotice(null);
+      return true;
+    } finally {
+      setSavingGroups(false);
+    }
+  }
+
+  async function commitGroupDraft() {
+    // Escape unmounts the inline editor before blur can fire; the ref keeps
+    // that blur from committing the abandoned draft.
+    if (groupDraftCancelledRef.current) {
+      groupDraftCancelledRef.current = false;
+      return;
+    }
+    const draft = groupDraft;
+    if (!draft) return;
+    const name = draft.name.trim();
+    if (!name) {
+      setGroupDraft(null);
+      return;
+    }
+    setGroupDraft(null);
+    if (draft.id) {
+      await persistGroups(
+        (groups ?? []).map((group) => (group.id === draft.id ? { ...group, name } : group)),
+      );
+      return;
+    }
+    const id = newGroupId();
+    const ok = await persistGroups([...(groups ?? []), { id, name, entries: [] }]);
+    if (ok) {
+      setActiveGroupId(id);
+      setChipMode('group');
+    }
+  }
+
+  function startGroupDraft(draft: { id: string | null; name: string }) {
+    groupDraftCancelledRef.current = false;
+    setGroupDraft(draft);
+  }
+
+  function startGroupRename(id: string) {
+    setGroupMenu(null);
+    const group = (groups ?? []).find((item) => item.id === id);
+    if (!group) return;
+    startGroupDraft({ id: group.id, name: group.name });
+  }
+
+  async function deleteGroup(id: string) {
+    setGroupMenu(null);
+    if (activeGroupId === id) setActiveGroupId(null);
+    await persistGroups((groups ?? []).filter((group) => group.id !== id));
+  }
+
+  async function moveGroup(id: string, direction: -1 | 1) {
+    setGroupMenu(null);
+    const list = [...(groups ?? [])];
+    const index = list.findIndex((group) => group.id === id);
+    const next = index + direction;
+    if (index < 0 || next < 0 || next >= list.length) return;
+    const [moved] = list.splice(index, 1);
+    if (!moved) return;
+    list.splice(next, 0, moved);
+    await persistGroups(list);
+  }
+
+  function openGroupMenu(id: string, anchor: HTMLElement) {
+    const rect = anchor.getBoundingClientRect();
+    setGroupMenu({
+      id,
+      top: rect.bottom + 4,
+      left: Math.max(MENU_SAFE_PADDING, rect.right - 160),
+    });
+  }
+
+  function openAddToGroupMenu(anchor: HTMLElement) {
+    const rect = anchor.getBoundingClientRect();
+    setAddToGroupMenu({
+      top: rect.bottom + 4,
+      left: Math.max(MENU_SAFE_PADDING, rect.right - 200),
+    });
+  }
+
+  async function addSelectionToGroup(groupId: string) {
+    setAddToGroupMenu(null);
+    const selectedNames = [...selected];
+    if (selectedNames.length === 0) return;
+    await persistGroups(
+      (groups ?? []).map((group) => {
+        if (group.id !== groupId) return group;
+        const entries = new Set(group.entries);
+        for (const name of selectedNames) entries.add(name);
+        return { ...group, entries: [...entries] };
+      }),
+    );
+  }
+
+  async function createGroupFromSelection() {
+    setAddToGroupMenu(null);
+    const entries = [...selected];
+    const id = newGroupId();
+    const ok = await persistGroups([...(groups ?? []), { id, name: 'New group', entries }]);
+    if (ok) {
+      setActiveGroupId(id);
+      setChipMode('group');
+      startGroupDraft({ id, name: 'New group' });
+    }
+  }
+
+  // One renderer per category so the type-tab view and the group view show
+  // identical cards: page grid for HTML, masonry for images, rows otherwise.
+  function renderCategorySection(
+    category: FileCategory,
+    sectionFiles: ProjectFile[],
+    keyPrefix: string,
+  ) {
+    return (
+      <div className="df-section" key={`${keyPrefix}${category}`}>
+        {category === 'html' ? (
+          // Page cards are self-describing — a straight grid under the tab bar.
+          <div className="df-card-grid">
+            {limitGridEntries(sectionFiles).map((f) => renderPageCard(f, category))}
+            {renderGridSentinel(sectionFiles)}
+          </div>
+        ) : category === 'image' ? (
+          // Images read as their own preview — a masonry waterfall of
+          // natural-aspect thumbnails instead of list rows.
+          <div className="df-image-masonry" data-testid="design-files-image-masonry">
+            {limitGridEntries(sectionFiles).map((f) => renderImageCard(f, category))}
+            {renderGridSentinel(sectionFiles)}
+          </div>
+        ) : (
+          sectionFiles.map((f) => renderFileRow(f, category))
+        )}
+      </div>
+    );
   }
 
   function openMenuFor(name: string, el: HTMLElement) {
@@ -1584,6 +1834,17 @@ export function DesignFilesPanel({
                     <span>{t('designFiles.delete')}</span>
                   </button>
                 )}
+                {groupsEnabled ? (
+                  <button
+                    type="button"
+                    data-testid="design-files-batch-add-to-group"
+                    disabled={savingGroups}
+                    onClick={(e) => openAddToGroupMenu(e.currentTarget)}
+                    title="Add the selected files to a group"
+                  >
+                    <span>Add to group</span>
+                  </button>
+                ) : null}
                 <button type="button" className="df-batch-clear" onClick={clearSelection}>
                   {t('designFiles.clearSelection')}
                 </button>
@@ -1716,22 +1977,167 @@ export function DesignFilesPanel({
             )
           ) : (
             <>
-              {availableTabs.length > 0 ? (
+              {availableTabs.length > 0 || (groupsEnabled && chipMode === 'group') ? (
                 <div className="df-tabs" role="tablist" data-testid="design-files-tabs">
-                  {availableTabs.map((tab) => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={resolvedTab === tab.id}
-                      className={`df-tab ${resolvedTab === tab.id ? 'active' : ''}`}
-                      data-testid={`design-files-tab-${tab.id}`}
-                      onClick={() => setActiveTab(tab.id)}
-                    >
-                      {tab.label}
-                      <span className="df-tab-count">{tab.count}</span>
-                    </button>
-                  ))}
+                  {groupsEnabled ? (
+                    <span className="df-chip-mode">
+                      <button
+                        type="button"
+                        className={`df-mode-btn ${chipMode === 'type' ? 'active' : ''}`}
+                        data-testid="design-files-mode-type"
+                        aria-pressed={chipMode === 'type'}
+                        onClick={() => setChipMode('type')}
+                      >
+                        By type
+                      </button>
+                      <button
+                        type="button"
+                        className={`df-mode-btn ${chipMode === 'group' ? 'active' : ''}`}
+                        data-testid="design-files-mode-group"
+                        aria-pressed={chipMode === 'group'}
+                        onClick={() => setChipMode('group')}
+                      >
+                        By group
+                      </button>
+                    </span>
+                  ) : null}
+                  {chipMode === 'group' ? (
+                    <>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={resolvedGroupId === null}
+                        className={`df-tab ${resolvedGroupId === null ? 'active' : ''}`}
+                        data-testid="design-files-tab-all"
+                        onClick={() => setActiveGroupId(null)}
+                      >
+                        All
+                        <span className="df-tab-count">{filesAtCurrentDir.length}</span>
+                      </button>
+                      {(groups ?? []).map((group) =>
+                        groupDraft && groupDraft.id === group.id ? (
+                          <span key={group.id} className="df-tab df-tab-editing">
+                            <input
+                              autoFocus
+                              data-testid="design-files-group-rename-input"
+                              value={groupDraft.name}
+                              disabled={savingGroups}
+                              onChange={(e) =>
+                                setGroupDraft((draft) =>
+                                  draft ? { ...draft, name: e.target.value } : draft,
+                                )
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') void commitGroupDraft();
+                                if (e.key === 'Escape') {
+                                  groupDraftCancelledRef.current = true;
+                                  setGroupDraft(null);
+                                }
+                              }}
+                              onBlur={() => void commitGroupDraft()}
+                            />
+                          </span>
+                        ) : (
+                          <span
+                            key={group.id}
+                            className={`df-tab-wrap ${activeGroupId === group.id ? 'active' : ''}`}
+                          >
+                            <button
+                              type="button"
+                              role="tab"
+                              aria-selected={activeGroupId === group.id}
+                              className={`df-tab ${activeGroupId === group.id ? 'active' : ''}`}
+                              data-testid={`design-files-tab-group-${group.id}`}
+                              onClick={() =>
+                                setActiveGroupId(activeGroupId === group.id ? null : group.id)
+                              }
+                            >
+                              {group.name}
+                              <span className="df-tab-count">
+                                {groupFilesByChip.get(group.id)?.length ?? 0}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              className="df-tab-more"
+                              data-testid={`design-files-group-menu-${group.id}`}
+                              title="Group actions"
+                              onClick={(e) => openGroupMenu(group.id, e.currentTarget)}
+                            >
+                              ⋯
+                            </button>
+                          </span>
+                        ),
+                      )}
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeGroupId === 'ungrouped'}
+                        className={`df-tab ${activeGroupId === 'ungrouped' ? 'active' : ''}`}
+                        data-testid="design-files-tab-ungrouped"
+                        onClick={() => setActiveGroupId('ungrouped')}
+                      >
+                        Ungrouped
+                        <span className="df-tab-count">
+                          {groupFilesByChip.get('ungrouped')?.length ?? 0}
+                        </span>
+                      </button>
+                      {groupDraft && groupDraft.id === null ? (
+                        <span className="df-tab df-tab-editing">
+                          <input
+                            autoFocus
+                            data-testid="design-files-group-create-input"
+                            placeholder="Group name"
+                            value={groupDraft.name}
+                            disabled={savingGroups}
+                            onChange={(e) =>
+                              setGroupDraft((draft) =>
+                                draft ? { ...draft, name: e.target.value } : draft,
+                              )
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') void commitGroupDraft();
+                              if (e.key === 'Escape') {
+                                groupDraftCancelledRef.current = true;
+                                setGroupDraft(null);
+                              }
+                            }}
+                            onBlur={() => void commitGroupDraft()}
+                          />
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="df-tab df-tab-new"
+                          data-testid="design-files-new-group"
+                          disabled={savingGroups}
+                          onClick={() => startGroupDraft({ id: null, name: '' })}
+                        >
+                          + New group
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    availableTabs.map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={resolvedTab === tab.id}
+                        className={`df-tab ${resolvedTab === tab.id ? 'active' : ''}`}
+                        data-testid={`design-files-tab-${tab.id}`}
+                        onClick={() => setActiveTab(tab.id)}
+                      >
+                        {tab.label}
+                        <span className="df-tab-count">{tab.count}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              ) : null}
+              {groupsNotice ? (
+                <div className="df-inline-notice" role="status">
+                  <ActionNoticeView notice={groupsNotice} />
                 </div>
               ) : null}
               {resolvedTab === 'live-artifacts' ? (
@@ -1845,28 +2251,29 @@ export function DesignFilesPanel({
                   {dirsAtCurrentDir.map((d) => renderDirRow(d))}
                 </div>
               ) : null}
-              {sections.map(([category, sectionFiles]) =>
-                resolvedTab === `cat:${category}` ? (
-                  <div className="df-section" key={`cat:${category}`}>
-                    {category === 'html' ? (
-                      // Page cards are self-describing — a straight grid
-                      // under the tab bar.
-                      <div className="df-card-grid">
-                        {limitGridEntries(sectionFiles).map((f) => renderPageCard(f, category))}
-                        {renderGridSentinel(sectionFiles)}
-                      </div>
-                    ) : category === 'image' ? (
-                      // Images read as their own preview — a masonry waterfall
-                      // of natural-aspect thumbnails instead of list rows.
-                      <div className="df-image-masonry" data-testid="design-files-image-masonry">
-                        {limitGridEntries(sectionFiles).map((f) => renderImageCard(f, category))}
-                        {renderGridSentinel(sectionFiles)}
-                      </div>
-                    ) : (
-                      sectionFiles.map((f) => renderFileRow(f, category))
-                    )}
-                  </div>
-                ) : null,
+              {chipMode === 'group' ? (
+                <>
+                  {groupSections.map(([category, sectionFiles]) =>
+                    renderCategorySection(category, sectionFiles, `grp:${resolvedGroupId ?? 'all'}:`),
+                  )}
+                  {activeGroupFiles.length === 0 ? (
+                    <div className="df-empty" data-testid="design-files-group-empty">
+                      <span className="df-empty-title">
+                        {resolvedGroupId === 'ungrouped'
+                          ? 'No ungrouped files here.'
+                          : resolvedGroupId === null
+                            ? 'No files here yet.'
+                            : 'No files in this group yet. Select files and use “Add to group”.'}
+                      </span>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                sections.map(([category, sectionFiles]) =>
+                  resolvedTab === `cat:${category}`
+                    ? renderCategorySection(category, sectionFiles, 'cat:')
+                    : null,
+                )
               )}
             </>
           )}
@@ -1953,6 +2360,78 @@ export function DesignFilesPanel({
             }}
           >
             {t('designFiles.delete')}
+          </button>
+        </div>
+      ) : null}
+      {groupMenu ? (
+        <div
+          data-testid="design-files-group-popover"
+          className="df-row-popover"
+          style={{ top: groupMenu.top, left: groupMenu.left }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button type="button" onClick={() => startGroupRename(groupMenu.id)}>
+            Rename…
+          </button>
+          <button
+            type="button"
+            disabled={savingGroups || (groups ?? [])[0]?.id === groupMenu.id}
+            onClick={() => void moveGroup(groupMenu.id, -1)}
+          >
+            Move left
+          </button>
+          <button
+            type="button"
+            disabled={
+              savingGroups
+              || (groups ?? [])[(groups ?? []).length - 1]?.id === groupMenu.id
+            }
+            onClick={() => void moveGroup(groupMenu.id, 1)}
+          >
+            Move right
+          </button>
+          <button
+            type="button"
+            className="danger"
+            data-testid="design-files-group-delete"
+            disabled={savingGroups}
+            onClick={() => void deleteGroup(groupMenu.id)}
+          >
+            Delete group
+          </button>
+          <div className="df-group-popover-hint">Files are not deleted.</div>
+        </div>
+      ) : null}
+      {addToGroupMenu ? (
+        <div
+          data-testid="design-files-add-to-group-popover"
+          className="df-row-popover"
+          style={{ top: addToGroupMenu.top, left: addToGroupMenu.left }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {(groups ?? []).length === 0 ? (
+            <div className="df-group-popover-hint">No groups yet.</div>
+          ) : null}
+          {(groups ?? []).map((group) => (
+            <button
+              key={group.id}
+              type="button"
+              data-testid={`design-files-add-to-group-${group.id}`}
+              disabled={savingGroups}
+              onClick={() => void addSelectionToGroup(group.id)}
+            >
+              {group.name}
+            </button>
+          ))}
+          <button
+            type="button"
+            data-testid="design-files-add-to-new-group"
+            disabled={savingGroups}
+            onClick={() => void createGroupFromSelection()}
+          >
+            + New group with selection…
           </button>
         </div>
       ) : null}

@@ -78,6 +78,7 @@ import type {
   PromptTemplateSummary,
   ProjectFile,
   ProjectFolder,
+  ProjectArtifactGroup,
   RenameProjectFileResponse,
   SkillDetail,
   SkillSummary,
@@ -2301,6 +2302,58 @@ export async function deleteProjectFolder(
     return true;
   } catch {
     return false;
+  }
+}
+
+export async function fetchProjectArtifactGroups(
+  projectId: string,
+  workspaceContext?: WorkspaceCollabContext | null,
+): Promise<ProjectArtifactGroup[]> {
+  // Same authority-keyed in-flight sharing as fetchProjectFolders: two readers
+  // may only share a request that carries the same Workspace headers.
+  return coalescedGet(
+    `project-artifact-groups:${projectId}:${workspaceIdentityCacheKey(workspaceContext)}`,
+    async () => {
+      try {
+        const resp = await fetch(
+          `/api/projects/${encodeURIComponent(projectId)}/artifact-groups`,
+          workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) } : undefined,
+        );
+        if (!resp.ok) return [];
+        const json = (await resp.json()) as { groups?: ProjectArtifactGroup[] };
+        return json.groups ?? [];
+      } catch {
+        return [];
+      }
+    },
+    IN_FLIGHT_SHARE_ONLY_MS,
+  );
+}
+
+/**
+ * Full-replace save of the project's virtual artifact groups ("Collections").
+ * Returns the daemon's normalized copy on success (ids filled, entries
+ * deduped) or null when the write was rejected or unreachable.
+ */
+export async function saveProjectArtifactGroups(
+  projectId: string,
+  groups: ProjectArtifactGroup[],
+  workspaceContext?: WorkspaceCollabContext | null,
+): Promise<ProjectArtifactGroup[] | null> {
+  try {
+    const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}/artifact-groups`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(workspaceContext ? workspaceProjectHeaders(workspaceContext) : {}),
+      },
+      body: JSON.stringify({ groups }),
+    });
+    if (!resp.ok) return null;
+    const json = (await resp.json()) as { groups?: ProjectArtifactGroup[] };
+    return json.groups ?? null;
+  } catch {
+    return null;
   }
 }
 
