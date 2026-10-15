@@ -80,6 +80,11 @@ import {
   type DesignSystemSummary,
   type UserDesignSystemInput,
 } from '../../design-systems/index.js';
+import {
+  normalizeArtifactGroups,
+  readArtifactGroups,
+  saveArtifactGroups,
+} from '../../project-artifact-groups.js';
 import { buildProjectDesignTokenSuggestions } from '../../project-design-token-suggestions.js';
 import {
   FIRST_PARTY_ATOMS,
@@ -6701,6 +6706,54 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       );
       /** @type {import('@open-design/contracts').DeleteProjectFolderResponse} */
       const body = { ok: true };
+      res.json(body);
+    } catch (err: any) {
+      sendApiError(res, 400, 'BAD_REQUEST', String(err?.message || err));
+    }
+  });
+
+  // Virtual artifact groups ("Collections") for the Design Files panel.
+  // Groups live in the project's DB metadata only — these routes never touch
+  // the filesystem, so creating, renaming, or deleting a group cannot affect
+  // any file. GET is a tolerant read; PUT is a strict full-replace document.
+  app.get('/api/projects/:id/artifact-groups', async (req, res) => {
+    try {
+      const project = getProject(db, req.params.id);
+      if (!project) {
+        return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
+      }
+      if (!await authorizeProjectRequest(req, res, project.id, { mode: 'read' })) return;
+      /** @type {import('@open-design/contracts').ProjectArtifactGroupsResponse} */
+      const body = { groups: readArtifactGroups(project.metadata) };
+      res.json(body);
+    } catch (err: any) {
+      sendApiError(res, 400, 'BAD_REQUEST', String(err?.message || err));
+    }
+  });
+
+  app.put('/api/projects/:id/artifact-groups', async (req, res) => {
+    try {
+      const project = getProject(db, req.params.id);
+      if (!project) {
+        return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
+      }
+      if (!await enforceWorkspaceProjectMutation(
+        req,
+        res,
+        sendApiError,
+        getWorkspaceProject,
+        getWorkspaceProjectByProjectId,
+        db,
+        project.id,
+        'writeFiles',
+      )) return;
+      const { groups } = req.body || {};
+      const saved = saveArtifactGroups(db, project.id, normalizeArtifactGroups(groups));
+      if (!saved) {
+        return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
+      }
+      /** @type {import('@open-design/contracts').ProjectArtifactGroupsResponse} */
+      const body = { groups: saved };
       res.json(body);
     } catch (err: any) {
       sendApiError(res, 400, 'BAD_REQUEST', String(err?.message || err));
