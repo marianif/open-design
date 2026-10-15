@@ -249,6 +249,30 @@ export interface DeleteProjectFileResponse extends OkResponse {}
 
 export interface DeleteProjectFolderResponse extends OkResponse {}
 
+/**
+ * A user-defined, virtual group of project artifacts ("Collections").
+ *
+ * Groups are presentation metadata only: `entries` reference the `name`
+ * values from GET /api/projects/:id/files exactly as listed (nested paths
+ * use "/"). Grouping never moves, renames, or deletes files — deleting a
+ * group only drops the metadata. Entries whose files no longer exist are
+ * tolerated on read and filtered by consumers against the live file list.
+ */
+export interface ProjectArtifactGroup {
+  id: string;
+  name: string;
+  entries: string[];
+}
+
+export interface ProjectArtifactGroupsResponse {
+  groups: ProjectArtifactGroup[];
+}
+
+/** Full-replace document PUT: the body carries the complete new set of groups. */
+export interface PutProjectArtifactGroupsRequest {
+  groups: ProjectArtifactGroup[];
+}
+
 export interface RenameProjectFileRequest {
   from: string;
   to: string;
