@@ -577,7 +577,12 @@ export function DesignFilesPanel({
   );
   const [groupDraft, setGroupDraft] = useState<{ id: string | null; name: string } | null>(null);
   const [groupMenu, setGroupMenu] = useState<{ id: string; top: number; left: number } | null>(null);
-  const [addToGroupMenu, setAddToGroupMenu] = useState<{ top: number; left: number } | null>(null);
+  const [addToGroupMenu, setAddToGroupMenu] = useState<{
+    top: number;
+    left: number;
+    names: string[];
+  } | null>(null);
+  const [groupsHintDismissed, setGroupsHintDismissed] = useState(false);
   const [groupsNotice, setGroupsNotice] = useState<ActionNotice | null>(null);
   const [savingGroups, setSavingGroups] = useState(false);
   const groupDraftCancelledRef = useRef(false);
@@ -1005,33 +1010,33 @@ export function DesignFilesPanel({
     });
   }
 
-  function openAddToGroupMenu(anchor: HTMLElement) {
-    const rect = anchor.getBoundingClientRect();
-    setAddToGroupMenu({
-      top: rect.bottom + 4,
-      left: Math.max(MENU_SAFE_PADDING, rect.right - 200),
-    });
+  function showAddToGroupMenu(position: { top: number; left: number }, names: string[]) {
+    setAddToGroupMenu({ top: position.top, left: position.left, names });
   }
 
-  async function addSelectionToGroup(groupId: string) {
+  async function addNamesToGroup(groupId: string) {
+    const names = addToGroupMenu?.names ?? [];
     setAddToGroupMenu(null);
-    const selectedNames = [...selected];
-    if (selectedNames.length === 0) return;
+    if (names.length === 0) return;
     await persistGroups(
       (groups ?? []).map((group) => {
         if (group.id !== groupId) return group;
         const entries = new Set(group.entries);
-        for (const name of selectedNames) entries.add(name);
+        for (const name of names) entries.add(name);
         return { ...group, entries: [...entries] };
       }),
     );
   }
 
-  async function createGroupFromSelection() {
+  async function createGroupFromMenuNames() {
+    const names = addToGroupMenu?.names ?? [];
     setAddToGroupMenu(null);
-    const entries = [...selected];
+    if (names.length === 0) return;
     const id = newGroupId();
-    const ok = await persistGroups([...(groups ?? []), { id, name: 'New group', entries }]);
+    const ok = await persistGroups([
+      ...(groups ?? []),
+      { id, name: 'New group', entries: [...names] },
+    ]);
     if (ok) {
       setActiveGroupId(id);
       setChipMode('group');
@@ -1839,7 +1844,16 @@ export function DesignFilesPanel({
                     type="button"
                     data-testid="design-files-batch-add-to-group"
                     disabled={savingGroups}
-                    onClick={(e) => openAddToGroupMenu(e.currentTarget)}
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      showAddToGroupMenu(
+                        {
+                          top: rect.bottom + 4,
+                          left: Math.max(MENU_SAFE_PADDING, rect.right - 200),
+                        },
+                        [...selected],
+                      );
+                    }}
                     title="Add the selected files to a group"
                   >
                     <span>Add to group</span>
@@ -2140,6 +2154,26 @@ export function DesignFilesPanel({
                   <ActionNoticeView notice={groupsNotice} />
                 </div>
               ) : null}
+              {chipMode === 'group'
+              && groupsEnabled
+              && (groups ?? []).length === 0
+              && !groupsHintDismissed ? (
+                <div className="df-groups-hint" data-testid="design-files-groups-hint">
+                  <span>
+                    No groups yet. Select files, then <strong>Add to group</strong> — or
+                    create one with <strong>+ New group</strong>.
+                  </span>
+                  <button
+                    type="button"
+                    className="df-groups-hint-dismiss"
+                    data-testid="design-files-groups-hint-dismiss"
+                    title="Dismiss"
+                    onClick={() => setGroupsHintDismissed(true)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : null}
               {resolvedTab === 'live-artifacts' ? (
                 <div className="df-section" key="live-artifacts">
                   {liveArtifacts.map((artifact) => (
@@ -2347,6 +2381,21 @@ export function DesignFilesPanel({
               {t('designFiles.download')}
             </button>
           </a>
+          {groupsEnabled ? (
+            <button
+              type="button"
+              data-testid={`design-file-add-to-group-${menuPos.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                const name = menuPos.name;
+                const { top, left } = menuPos;
+                setMenuPos(null);
+                showAddToGroupMenu({ top, left }, [name]);
+              }}
+            >
+              Add to group…
+            </button>
+          ) : null}
           <button
             type="button"
             className="danger"
@@ -2420,7 +2469,7 @@ export function DesignFilesPanel({
               type="button"
               data-testid={`design-files-add-to-group-${group.id}`}
               disabled={savingGroups}
-              onClick={() => void addSelectionToGroup(group.id)}
+              onClick={() => void addNamesToGroup(group.id)}
             >
               {group.name}
             </button>
@@ -2429,9 +2478,11 @@ export function DesignFilesPanel({
             type="button"
             data-testid="design-files-add-to-new-group"
             disabled={savingGroups}
-            onClick={() => void createGroupFromSelection()}
+            onClick={() => void createGroupFromMenuNames()}
           >
-            + New group with selection…
+            {addToGroupMenu.names.length === 1
+              ? '+ New group with this file…'
+              : '+ New group with these files…'}
           </button>
         </div>
       ) : null}

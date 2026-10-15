@@ -166,6 +166,22 @@ describe("DesignFilesPanel groups (Collections)", () => {
     expect(saved.find((group) => group.id === "g1")).toEqual(GROUPS[0]);
   });
 
+  it("adds a single file from its card ⋯ menu", async () => {
+    const onSaveGroups = vi.fn(async (_next: ProjectArtifactGroup[]) => true);
+    renderPanel({ groups: GROUPS, onSaveGroups });
+
+    fireEvent.click(screen.getByTestId("design-file-menu-blog.html"));
+    fireEvent.click(await screen.findByTestId("design-file-add-to-group-blog.html"));
+    fireEvent.click(await screen.findByTestId("design-files-add-to-group-g1"));
+
+    await waitFor(() => expect(onSaveGroups).toHaveBeenCalledTimes(1));
+    const saved = onSaveGroups.mock.calls[0]![0] as ProjectArtifactGroup[];
+    const landing = saved.find((group) => group.id === "g1")!;
+    expect(landing.entries).toEqual(["landing.html", "blog.html"]);
+    // The other group is untouched.
+    expect(saved.find((group) => group.id === "g2")).toEqual(GROUPS[1]);
+  });
+
   it("surfaces a retry notice when the group save is rejected", async () => {
     const onSaveGroups = vi.fn(async (_next: ProjectArtifactGroup[]) => false);
     renderPanel({ groups: [], onSaveGroups });
@@ -177,5 +193,28 @@ describe("DesignFilesPanel groups (Collections)", () => {
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(await screen.findByText(/Couldn’t save groups/)).toBeTruthy();
+  });
+
+  it("shows the first-run hint while there are no groups, and it dismisses", () => {
+    renderPanel({
+      groups: [],
+      onSaveGroups: vi.fn(async (_next: ProjectArtifactGroup[]) => true),
+    });
+
+    fireEvent.click(screen.getByTestId("design-files-mode-group"));
+    expect(screen.getByTestId("design-files-groups-hint")).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("design-files-groups-hint-dismiss"));
+    expect(screen.queryByTestId("design-files-groups-hint")).toBeNull();
+  });
+
+  it("hides the first-run hint once groups exist", () => {
+    renderPanel({
+      groups: GROUPS,
+      onSaveGroups: vi.fn(async (_next: ProjectArtifactGroup[]) => true),
+    });
+
+    fireEvent.click(screen.getByTestId("design-files-mode-group"));
+    expect(screen.queryByTestId("design-files-groups-hint")).toBeNull();
   });
 });
