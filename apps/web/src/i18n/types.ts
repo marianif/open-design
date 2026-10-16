@@ -597,6 +597,7 @@ export interface Dict {
   'settings.modelCustom': string;
   'settings.modelCustomLabel': string;
   'settings.modelCustomPlaceholder': string;
+  'settings.onboardingModelUseCustom': string;
   'settings.mediaProviders': string;
   'settings.mediaProvidersHint': string;
   'settings.mcpServerTitle': string;
@@ -1384,6 +1385,9 @@ export interface Dict {
   'homeHero.chip.deck': string;
   'homeHero.chip.image': string;
   'homeHero.chip.video': string;
+  'homeHero.chip.motionDesign': string;
+  'homeHero.chip.motionDesignDesc': string;
+  'homeHero.chip.motionDesignHint': string;
   'homeHero.chip.hyperframes': string;
   'homeHero.chip.audio': string;
   'homeHero.chip.createBrandKit': string;
@@ -5591,6 +5595,7 @@ export interface Dict {
   'skillDetail.loadFailed': string;
   'skillDetail.previewAria': string;
   'common.dismiss': string;
+  'campaign.testReplay': string;
   'campaign.deepseekV4Flash.headline': string;
   'campaign.deepseekV4Flash.description': string;
   'campaign.deepseekV4Flash.benefit': string;

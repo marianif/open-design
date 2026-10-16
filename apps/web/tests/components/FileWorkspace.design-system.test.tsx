@@ -570,6 +570,8 @@ describe('FileWorkspace design-system project surface', () => {
       }),
     ));
     expect(events).toEqual([
+      // Opening a project also loads its Collections groups.
+      '/api/projects/ds-acme/artifact-groups',
       '/api/brands/brand-acme/finalize',
       'refresh-files',
       'refresh-design-systems',
@@ -695,6 +697,8 @@ describe('FileWorkspace design-system project surface', () => {
       }),
     );
     expect(events).toEqual([
+      // Opening a project also loads its Collections groups.
+      '/api/projects/ds-acme/artifact-groups',
       '/api/brands/brand-acme/finalize',
       'refresh-files',
       'refresh-design-systems',
@@ -795,6 +799,8 @@ describe('FileWorkspace design-system project surface', () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(events).toEqual([
+      // Opening a project also loads its Collections groups.
+      '/api/projects/ds-acme/artifact-groups',
       '/api/brands/brand-acme/finalize',
       'refresh-files',
       'refresh-design-systems',
